@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://andrewrosemberg.github.io/NeurIPS2026-Masked-Sobolev-Optimization-Proxies/sitemap.xml

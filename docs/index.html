@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8f7f3">
+  <meta name="description" content="Masked Sobolev Training for Feasibility-Reliable Optimization Proxies. A NeurIPS 2026 paper on sparse sensitivity supervision for learned optimization.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Masked Sobolev Training · NeurIPS 2026">
+  <meta property="og:description" content="Learning optimization proxies with decisions and a sparse, changing subset of solver sensitivities.">
+  <meta property="og:url" content="https://andrewrosemberg.github.io/NeurIPS2026-Masked-Sobolev-Optimization-Proxies/">
+  <meta property="og:image" content="https://andrewrosemberg.github.io/NeurIPS2026-Masked-Sobolev-Optimization-Proxies/assets/social-preview.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>Masked Sobolev Training · NeurIPS 2026</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="assets/InstrumentSerif-Regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <script src="site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="wordmark" href="#" aria-label="Masked Sobolev home">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="1" y="1" width="30" height="30" rx="8" fill="currentColor"/><g fill="#f8f7f3"><rect x="8" y="8" width="6" height="6" rx="1"/><rect x="18" y="8" width="6" height="6" rx="1" opacity=".25"/><rect x="8" y="18" width="6" height="6" rx="1" opacity=".25"/><rect x="18" y="18" width="6" height="6" rx="1"/></g></svg>
+      Masked Sobolev
+    </a>
+    <nav aria-label="Main navigation">
+      <a href="#method">Method</a><a href="#results">Results</a><a href="#citation">Citation</a>
+      <a class="repository-link" href="https://github.com/andrewrosemberg/NeurIPS2026-Masked-Sobolev-Optimization-Proxies" aria-label="View the project repository on GitHub">GitHub <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero section-wrap" aria-labelledby="paper-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> NeurIPS 2026 <span class="eyebrow-divider" aria-hidden="true"></span> Optimization learning</p>
+        <h1 id="paper-title">Masked Sobolev Training <span class="title-muted">for</span> Feasibility-Reliable Optimization Proxies</h1>
+        <p class="hero-description">Learn fast optimization proxies from solver decisions and a sparse, changing subset of their sensitivities.</p>
+        <div class="authors" aria-label="Paper authors">
+          <span>Andrew W. Rosemberg<sup>1</sup></span>
+          <span>Joaquim Dias Garcia<sup>2</sup></span>
+          <span>Russell Bent<sup>3</sup></span>
+          <span>Pascal Van Hentenryck<sup>1</sup></span>
+        </div>
+        <p class="affiliations"><span><sup>1</sup> Georgia Tech</span><span><sup>2</sup> PSR</span><span><sup>3</sup> Los Alamos National Laboratory</span></p>
+        <div class="resources" aria-label="Paper resources">
+          <a class="resource unavailable" role="link" aria-disabled="true" data-resource="paper">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8l-5-5Z M14 3v5h5 M9 12h6 M9 16h6"/></svg>
+            <span>Camera-ready paper<small data-resource-status>Coming soon</small></span>
+          </a>
+          <a class="resource unavailable" role="link" aria-disabled="true" data-resource="code">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5 M16 7l5 5-5 5 M14 4l-4 16"/></svg>
+            <span>Research code<small data-resource-status>Coming soon</small></span>
+          </a>
+        </div>
+      </div>
+
+      <aside class="mask-explorer" aria-labelledby="mask-title">
+        <div class="mask-heading"><span class="figure-number">01 / THE IDEA</span><span class="live-label"><span aria-hidden="true"></span> Interactive</span></div>
+        <h2 id="mask-title">A little local geometry.</h2>
+        <p>Only selected Jacobian entries enter each training update.</p>
+        <div class="matrix-frame"><span class="matrix-axis matrix-axis-y">Decision coordinates</span><div class="matrix" id="mask-grid" aria-hidden="true"></div><span class="matrix-axis matrix-axis-x">Problem parameters</span></div>
+        <div class="matrix-legend"><span><i class="legend-selected"></i> Supervised this update</span><span><i class="legend-unselected"></i> Unselected</span></div>
+        <div class="mask-controls">
+          <div class="range-label"><label for="density">Mask density</label><output for="density" id="density-label">5%</output></div>
+          <input type="range" id="density" min="5" max="100" step="5" value="5" aria-describedby="mask-caption">
+          <div class="mask-bottom"><span id="entry-count" aria-live="polite">7 of 144 entries</span><button id="resample" type="button">Resample mask <span aria-hidden="true">↻</span></button></div>
+        </div>
+        <p class="mask-caption" id="mask-caption">An illustration of uniform sampling. The loss normalizes by the number of retained entries.</p>
+        <noscript><p class="no-script">Enable JavaScript to explore the mask. The method supervises a uniformly selected subset of sensitivities.</p></noscript>
+      </aside>
+    </section>
+
+    <section class="highlights section-wrap" aria-label="Selected findings">
+      <div><p class="metric">15–33<span>%</span></p><h2>Lower mean infeasibility</h2><p>Across three AC power flow networks</p></div>
+      <div><p class="metric">0.07–0.22<span>%</span></p><h2>Small optimality gaps</h2><p>For the reported power flow proxies</p></div>
+      <div><p class="metric">2.5<span>×</span></p><h2>Fewer training iterations</h2><p>To 95% reference performance in Acrobot</p></div>
+    </section>
+
+    <section class="overview section-wrap" aria-labelledby="overview-title">
+      <div><p class="section-kicker">The problem</p><h2 class="section-title" id="overview-title">Accurate predictions are only part of the story.</h2></div>
+      <div class="prose"><p>Optimization proxies replace repeated constrained optimization solves with a neural network’s forward pass. But a small prediction error can still produce an infeasible decision. The challenge grows when a changing active constraint set makes local behavior difficult to learn.</p><p>We augment value supervision with randomly selected solver sensitivities. The mask controls how many derivative conditions enter together, giving the proxy local geometric information while avoiding dense matching at every update. The benefit depends on whether those local sensitivities remain informative between samples.</p></div>
+    </section>
+
+    <section class="method-section" id="method" aria-labelledby="method-title">
+      <div class="section-wrap">
+        <div class="section-heading"><div><p class="section-kicker">The method</p><h2 class="section-title" id="method-title">Values, sensitivities,<br>and a changing mask.</h2></div><p class="section-intro">The solver supplies the targets offline. During training, automatic differentiation provides the proxy’s corresponding derivatives.</p></div>
+        <div class="method-layout">
+          <figure class="method-figure"><img src="assets/method.png" width="1800" height="1234" loading="lazy" alt="Masked Sobolev pipeline: offline optimization supplies reference decisions and sensitivities, while the neural proxy supplies predictions and derivatives through automatic differentiation. Both enter the training loss."><figcaption>The training pipeline. The deployed proxy needs only a forward pass.</figcaption></figure>
+          <div class="method-explanation">
+            <div class="method-step"><span class="step-index">01</span><div><h3>Obtain local solver information</h3><p>For each sampled problem input, collect a reference decision and the local sensitivities of the selected solution map.</p></div></div>
+            <div class="method-step"><span class="step-index">02</span><div><h3>Match a sparse subset</h3><p>At each update, uniformly sample Jacobian entries and match the proxy’s corresponding derivatives. Resampling exposes it to different entries over training.</p></div></div>
+            <div class="method-step"><span class="step-index">03</span><div><h3>Control density and weight separately</h3><p>Normalize by the number of retained entries. Mask density controls simultaneous matching conditions; the Sobolev weight λ controls the derivative term’s strength.</p></div></div>
+            <div class="equation" role="math" aria-label="Training loss equals value loss plus lambda times normalized masked derivative loss"><span>ℒ = ℓ<sub>value</sub> + λ</span><span class="fraction"><span>‖M ⊙ (Dĝ<sub>θ</sub> − Dg)‖<sup>2</sup><sub>F</sub></span><span>‖M‖<sub>0</sub></span></span></div>
+            <p class="equation-note">Uniform fixed-size sampling gives an unbiased estimate of the full mean-squared Jacobian loss. The mask controls how many conditions enter each update; it does not identify or filter unreliable derivatives.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="results-section section-wrap" id="results" aria-labelledby="results-title">
+      <div class="section-heading"><div><p class="section-kicker">The evidence</p><h2 class="section-title" id="results-title">Where sensitivities help.<br>And where they help less.</h2></div><p class="section-intro">Three settings connect the quality of local sensitivity information to the behavior of the learned proxy.</p></div>
+      <div class="result-tabs" role="tablist" aria-label="Experimental settings">
+        <button id="tab-opf" type="button" role="tab" aria-selected="true" aria-controls="panel-opf" data-panel="opf">AC power flow</button>
+        <button id="tab-control" type="button" role="tab" aria-selected="false" aria-controls="panel-control" data-panel="control" tabindex="-1">Control distillation</button>
+        <button id="tab-portfolio" type="button" role="tab" aria-selected="false" aria-controls="panel-portfolio" data-panel="portfolio" tabindex="-1">Portfolio optimization</button>
+      </div>
+      <div class="result-panel" id="panel-opf" role="tabpanel" aria-labelledby="tab-opf" tabindex="0">
+        <div class="panel-heading"><div><span class="panel-label">Constrained, locally informative sensitivities</span><h3>Better feasibility with small objective gaps</h3></div><p>Mean absolute infeasibility decreases on all three networks. The optimality gap increases on two, making the operating tradeoff explicit.</p></div>
+        <div class="opf-grid">
+          <figure class="opf-chart"><div class="chart-legend"><span><i class="value-only"></i> Value-only</span><span><i class="sobolev"></i> Masked Sobolev</span></div><svg id="opf-chart" viewBox="0 0 650 335" role="img" aria-labelledby="opf-chart-title opf-chart-desc"><title id="opf-chart-title">Mean absolute infeasibility across AC power flow networks</title><desc id="opf-chart-desc">IEEE-300: value-only 0.0116, Sobolev 0.0099. PEGASE-1k: 0.0098 versus 0.0066. RTE-6k: 0.0059 versus 0.0042. Lower is better.</desc></svg><figcaption>Mean absolute infeasibility (INF). Lower is better. Reductions of 15%, 33%, and 29% use value-only INF as the denominator.</figcaption></figure>
+          <div class="gap-results"><h4>The objective tradeoff</h4><table><caption>Relative optimality gap</caption><thead><tr><th scope="col">Network</th><th scope="col">Value-only</th><th scope="col">Sobolev</th></tr></thead><tbody><tr><th scope="row">IEEE-300</th><td>0.02%</td><td>0.22%</td></tr><tr><th scope="row">PEGASE-1k</th><td>0.07%</td><td>0.15%</td></tr><tr><th scope="row">RTE-6k</th><td>0.07%</td><td>0.07%</td></tr></tbody></table><p class="table-note">Across test cases, Sobolev matches or improves maximum constraint violations in over 85% of cases.</p></div>
+        </div>
+        <div class="ablation"><div><span class="panel-label">The mask-density ablation</span><h4>Sparse supervision matters.</h4><p>On IEEE-300, dense matching has <strong>5.2× higher INF</strong> than the 5% mask, despite a smaller objective gap.</p><p class="table-note">These are separate configurations from the three-network comparison above.</p></div><div class="table-scroll"><table><caption class="sr-only">IEEE-300 mask-density ablation</caption><thead><tr><th scope="col">Density</th><th scope="col">MSE</th><th scope="col">Gap</th><th scope="col">INF ↓</th></tr></thead><tbody><tr><th scope="row">5%</th><td>0.0065</td><td>0.22%</td><td>0.0099</td></tr><tr class="best-inf"><th scope="row">10%</th><td>0.0088</td><td>0.33%</td><td><strong>0.0094</strong></td></tr><tr><th scope="row">25%</th><td>0.0087</td><td>0.29%</td><td>0.0141</td></tr><tr><th scope="row">100%</th><td>0.0120</td><td>0.17%</td><td>0.0517</td></tr></tbody></table></div></div>
+      </div>
+
+      <div class="result-panel" id="panel-control" role="tabpanel" aria-labelledby="tab-control" tabindex="0" hidden>
+        <div class="panel-heading"><div><span class="panel-label">Smooth, well-covered control regime</span><h3>Faster policy distillation in Acrobot</h3></div><p>Both methods use the same DAgger-style pipeline to distill a PPO reference controller. Sobolev also matches selected state-to-action sensitivities.</p></div>
+        <div class="control-layout"><figure><img src="assets/acrobot-training.png" width="1736" height="854" loading="lazy" alt="Acrobot training curves: the highlighted orange Sobolev run approaches reference policy performance earlier than the highlighted blue value-only run. Fainter curves show the hyperparameter sweep."><figcaption>Mean tip height versus training iteration. Orange: Sobolev. Blue: value-only. Black: reference policy.</figcaption></figure><div class="control-summary"><p class="result-number">2.5<span>×</span></p><h4>Fewer iterations to the threshold</h4><p>The first reconstructed threshold crossings occur at <strong>1,349</strong> versus <strong>3,446</strong> iterations, using 95% of reference performance.</p><p>About <strong>16 vs. 40 minutes</strong>, despite a 2% increase in per-iteration cost.</p></div></div>
+        <p class="result-caveat">Here the derivative targets come from the PPO reference controller, rather than differentiating an optimal-control solver. The threshold uses a 100-step moving average of mean tip height.</p>
+      </div>
+
+      <div class="result-panel" id="panel-portfolio" role="tabpanel" aria-labelledby="tab-portfolio" tabindex="0" hidden>
+        <div class="panel-heading"><div><span class="panel-label">Highly localized or near-zero sensitivities</span><h3>A useful counterexample</h3></div><p>Mean–variance portfolio optimization shows why locally valid derivatives need not provide useful interpolation directions across neighboring active-set regimes.</p></div>
+        <div class="portfolio-layout"><div><h4>The benefit changes with the risk regime</h4><p>Portfolios are often sparse, leaving many sensitivities close to zero. Small parameter changes can alter the active assets or sharply change the interaction of risk, budget, and bound constraints.</p><p>Under tight risk caps, value-only training has the smaller mean gap. Outside that region, Sobolev performs better in this experiment.</p></div><div><table class="portfolio-table"><caption>Test optimality gap, mean ± standard deviation (%)</caption><thead><tr><th scope="col">Risk cap / budget</th><th scope="col">Value-only</th><th scope="col">Sobolev</th></tr></thead><tbody><tr><th scope="row">≤ 10%</th><td><strong>14.7 ± 21.2</strong></td><td>29.5 ± 26.9</td></tr><tr><th scope="row">&gt; 10%</th><td>18.9 ± 20.2</td><td><strong>8.7 ± 9.5</strong></td></tr></tbody></table><p class="table-note">Lower is better. This result motivates using local sensitivity information selectively by regime, rather than assuming a universal advantage.</p></div></div>
+      </div>
+      <noscript><p class="no-script">Additional findings: Acrobot reaches the reference-performance threshold in about 2.5× fewer iterations. In tight-risk portfolios, mean gaps are 29.5% for Sobolev and 14.7% for value-only training.</p></noscript>
+    </section>
+
+    <section class="theory section-wrap" aria-labelledby="theory-title"><div><p class="section-kicker">A theoretical perspective</p><h2 class="section-title" id="theory-title">Local information can change the error order.</h2><p>In a regular region, exact value-and-Jacobian interpolation improves the bound on uniform value error as the covering radius δ decreases.</p></div><div class="error-orders"><div><span>Value matching</span><strong>O(δ)</strong></div><div><span>Value + Jacobian matching</span><strong>O(δ²)</strong></div><p>Idealized regional bounds under the stated regularity assumptions, including Lipschitz Jacobians for the joint bound. These are not convergence guarantees for masked training.</p></div></section>
+
+    <section class="citation-section section-wrap" id="citation" aria-labelledby="citation-title"><div><p class="section-kicker">Reference</p><h2 class="section-title" id="citation-title">Cite this work.</h2><p>Camera-ready paper and code links will appear here when available.</p></div><div class="citation-code"><div class="code-heading"><span>BibTeX</span><button type="button" id="copy-citation">Copy citation <span aria-hidden="true">⧉</span></button></div><pre><code id="bibtex">@inproceedings{rosemberg2026masked,
+  title = {Masked Sobolev Training for
+           Feasibility-Reliable Optimization Proxies},
+  author = {Rosemberg, Andrew W. and Garcia, Joaquim Dias
+            and Bent, Russell and Van Hentenryck, Pascal},
+  booktitle = {Advances in Neural Information Processing Systems},
+  year = {2026}
+}</code></pre><span id="copy-status" class="sr-only" role="status"></span></div></section>
+  </main>
+  <footer class="site-footer section-wrap"><div><a class="wordmark" href="#">Masked Sobolev</a><p>A NeurIPS 2026 research project</p></div><div><a href="mailto:arosemberg3@gatech.edu">Contact</a><a href="https://github.com/andrewrosemberg/NeurIPS2026-Masked-Sobolev-Optimization-Proxies">Project repository <span aria-hidden="true">↗</span></a><a href="#main">Back to top <span aria-hidden="true">↑</span></a></div></footer>
+</body>
+</html>
