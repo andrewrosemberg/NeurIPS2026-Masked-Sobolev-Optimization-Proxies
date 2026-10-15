@@ -17,7 +17,10 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preload" href="assets/InstrumentSerif-Regular.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="illustrations.css">
+  <noscript><style>.animation-figure canvas,.animation-controls,.figure-slider,.result-tabs{display:none}.result-panel[hidden]{display:block!important}.result-panel{margin-bottom:20px}.matrix-frame,.matrix-legend,.mask-controls{display:none}</style></noscript>
   <script src="site.js" defer></script>
+  <script src="illustrations.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -27,7 +30,7 @@
       Masked Sobolev
     </a>
     <nav aria-label="Main navigation">
-      <a href="#method">Method</a><a href="#results">Results</a><a href="#citation">Citation</a>
+      <a href="#method">Method</a><a href="#problems">Problems</a><a href="#results">Results</a><a href="#citation">Citation</a>
       <a class="repository-link" href="https://github.com/andrewrosemberg/NeurIPS2026-Masked-Sobolev-Optimization-Proxies" aria-label="View the project repository on GitHub">GitHub <span aria-hidden="true">↗</span></a>
     </nav>
   </header>
@@ -37,7 +40,7 @@
       <div class="hero-copy">
         <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> NeurIPS 2026 <span class="eyebrow-divider" aria-hidden="true"></span> Optimization learning</p>
         <h1 id="paper-title">Masked Sobolev Training <span class="title-muted">for</span> Feasibility-Reliable Optimization Proxies</h1>
-        <p class="hero-description">Learn fast optimization proxies from solver decisions and a sparse, changing subset of their sensitivities.</p>
+        <p class="hero-description">Assessing generalization in feasibility and optimality for optimization proxies learned in Sobolev space.</p>
         <div class="authors" aria-label="Paper authors">
           <span>Andrew W. Rosemberg<sup>1</sup></span>
           <span>Joaquim Dias Garcia<sup>2</sup></span>
@@ -75,22 +78,34 @@
 
     <section class="highlights section-wrap" aria-label="Selected findings">
       <div><p class="metric">15–33<span>%</span></p><h2>Lower mean infeasibility</h2><p>Across three AC power flow networks</p></div>
-      <div><p class="metric">0.07–0.22<span>%</span></p><h2>Small optimality gaps</h2><p>For the reported power flow proxies</p></div>
+      <div><p class="metric">18–400<span>%</span></p><h2>Median normalized RMI</h2><p>Improvement in worst constraint violation · <a href="#rmi-definition">definition ↓</a></p></div>
       <div><p class="metric">2.5<span>×</span></p><h2>Fewer training iterations</h2><p>To 95% reference performance in Acrobot</p></div>
     </section>
 
     <section class="overview section-wrap" aria-labelledby="overview-title">
       <div><p class="section-kicker">The problem</p><h2 class="section-title" id="overview-title">Accurate predictions are only part of the story.</h2></div>
-      <div class="prose"><p>Optimization proxies replace repeated constrained optimization solves with a neural network’s forward pass. But a small prediction error can still produce an infeasible decision. The challenge grows when a changing active constraint set makes local behavior difficult to learn.</p><p>We augment value supervision with randomly selected solver sensitivities. The mask controls how many derivative conditions enter together, giving the proxy local geometric information while avoiding dense matching at every update. The benefit depends on whether those local sensitivities remain informative between samples.</p></div>
+      <div class="prose"><p>Optimization proxies make repeated decision-making practical: a neural network replaces an expensive optimization solve with a fast forward pass. Their usefulness, however, depends on how well they generalize in <strong>objective quality and constraint satisfaction</strong>. A small prediction error can conceal a serious feasibility violation.</p>
+        <p>Constrained solution maps can pass through a combinatorial number of active-set regimes. Covering their behavior with value observations alone can demand many samples. Sobolev supervision adds local sensitivities, teaching the proxy both a decision and how that decision changes with the problem input.</p>
+        <p>For large problems, a full Jacobian introduces many simultaneous matching conditions and substantial training cost. A sparse, changing mask controls how many derivative conditions enter an update, while keeping the normalized derivative loss unbiased.</p>
+        <p class="argument">Results show that sensitivity supervision can improve generalization when local derivatives remain informative between samples. Sparse matching limits simultaneous training conditions, while vanishing or highly localized sensitivities offer weak guidance. The gains depend on the geometry of the decision map.</p></div>
     </section>
 
     <section class="method-section" id="method" aria-labelledby="method-title">
       <div class="section-wrap">
-        <div class="section-heading"><div><p class="section-kicker">The method</p><h2 class="section-title" id="method-title">Values, sensitivities,<br>and a changing mask.</h2></div><p class="section-intro">The solver supplies the targets offline. During training, automatic differentiation provides the proxy’s corresponding derivatives.</p></div>
+        <div class="section-heading"><div><p class="section-kicker">The method</p><h2 class="section-title" id="method-title">Values, sensitivities,<br> and a changing mask.</h2></div><p class="section-intro">Reference decisions and sensitivities supply local information. Automatic differentiation provides the proxy’s corresponding derivatives; a fresh mask selects which ones to match.</p></div>
         <div class="method-layout">
-          <figure class="method-figure"><img src="assets/method.png" width="1800" height="1234" loading="lazy" alt="Masked Sobolev pipeline: offline optimization supplies reference decisions and sensitivities, while the neural proxy supplies predictions and derivatives through automatic differentiation. Both enter the training loss."><figcaption>The training pipeline. The deployed proxy needs only a forward pass.</figcaption></figure>
+          <div class="workflow-column">
+            <figure class="animation-figure" data-animation="workflow">
+              <div class="animation-topline"><span>Training, one input at a time</span><span class="animation-status">Slow loop · 14.4 s</span></div>
+              <canvas width="960" height="640" role="img" aria-label="Animated training workflow. Each input supplies reference values and sensitivities. All decision values are matched; seven of 144 illustrative Jacobian entries are selected with a new uniform mask at each update."></canvas>
+              <div class="animation-controls"><button type="button" data-action="play" aria-pressed="true">Pause</button><button type="button" data-action="step">Next update</button><a href="assets/masking-workflow.gif" download>Download GIF ↗</a></div>
+              <figcaption>Each update uses a new input and a new uniform mask. The same entries are retained in both Jacobians; value supervision remains complete. The reference is collected offline, and deployment uses only the proxy’s forward pass.</figcaption>
+              <noscript><img src="assets/masking-workflow.png" alt="Static view of masked Sobolev training, with complete value supervision and a sparse subset of Jacobian entries."></noscript>
+            </figure>
+            <details class="original-diagram"><summary>View the paper’s original diagram</summary><img src="assets/method.png" width="1800" height="1234" loading="lazy" alt="Original masked Sobolev training diagram from the paper."></details>
+          </div>
           <div class="method-explanation">
-            <div class="method-step"><span class="step-index">01</span><div><h3>Obtain local solver information</h3><p>For each sampled problem input, collect a reference decision and the local sensitivities of the selected solution map.</p></div></div>
+            <div class="method-step"><span class="step-index">01</span><div><h3>Obtain local solver information</h3><p>For each sampled input p, collect the reference decision g(p) and its local sensitivities Dg(p). The reference can be a differentiable teacher or a selected solver solution.</p></div></div>
             <div class="method-step"><span class="step-index">02</span><div><h3>Match a sparse subset</h3><p>At each update, uniformly sample Jacobian entries and match the proxy’s corresponding derivatives. Resampling exposes it to different entries over training.</p></div></div>
             <div class="method-step"><span class="step-index">03</span><div><h3>Control density and weight separately</h3><p>Normalize by the number of retained entries. Mask density controls simultaneous matching conditions; the Sobolev weight λ controls the derivative term’s strength.</p></div></div>
             <div class="equation" role="math" aria-label="Training loss equals value loss plus lambda times normalized masked derivative loss"><span>ℒ = ℓ<sub>value</sub> + λ</span><span class="fraction"><span>‖M ⊙ (Dĝ<sub>θ</sub> − Dg)‖<sup>2</sup><sub>F</sub></span><span>‖M‖<sub>0</sub></span></span></div>
@@ -100,15 +115,101 @@
       </div>
     </section>
 
+    <section class="problems-section section-wrap" id="problems" aria-labelledby="problems-title">
+      <div class="section-heading"><div><p class="section-kicker">The geometry behind the experiments</p><h2 class="section-title" id="problems-title">Three problems.<br> Three kinds of local information.</h2></div><p class="section-intro">Explore the decision maps behind the story. The animations and landscapes below are illustrative; the experimental measurements appear in the results section.</p></div>
+
+      <article class="problem-card" aria-labelledby="control-problem-title">
+        <div class="problem-heading"><span class="problem-index">01</span><div><p class="section-kicker">Acrobot / Optimal control</p><h3 id="control-problem-title">Generalization under regularity<br> and smooth mapping.</h3></div></div>
+        <div class="problem-layout">
+          <figure class="animation-figure" data-animation="control">
+            <div class="animation-topline"><span>A regular control map</span><span>Illustration · 12 s loop</span></div>
+            <canvas width="960" height="870" role="img" aria-label="Illustrative two-link Acrobot swing-up motion and a smooth synthetic state-to-action map. This is a kinematic illustration, not a rollout of the paper’s controller."></canvas>
+            <div class="animation-controls"><button type="button" data-action="play" aria-pressed="true">Pause</button><a href="assets/acrobot-geometry.gif" download>Download GIF ↗</a></div>
+            <figcaption>The arm’s motion is illustrative kinematics. The smooth surface is a synthetic local policy slice, not the control objective or a fitted PPO policy. It represents a regime in which nearby inputs have similar sensitivities.</figcaption>
+            <noscript><img src="assets/acrobot-geometry.png" alt="Two-link Acrobot and a smooth illustrative local control map."></noscript>
+          </figure>
+          <div class="problem-copy"><p class="formulation-label">Finite-horizon control problem</p>
+            <div class="program" role="math" aria-label="Minimize the trajectory cost over states and bounded controls, subject to the system dynamics and the given initial state.">
+              <div class="program-row"><span class="operator">min<small>s<sub>1:T</sub>, u<sub>0:T−1</sub></small></span><span>f(s<sub>1:T</sub>, u<sub>0:T−1</sub>; p)</span></div>
+              <div class="program-row"><span>s.t.</span><span>s<sub>t+1</sub> = d(s<sub>t</sub>, u<sub>t</sub>),<small>t = 0, …, T − 1</small></span></div>
+              <div class="program-row"><span></span><span>−ū ≤ u<sub>t</sub> ≤ ū,<small>t = 0, …, T − 1</small></span></div>
+              <div class="program-row"><span></span><span>s<sub>0</sub> = p.</span></div>
+            </div>
+            <p class="variable-key">The input p is the initial state. States contain joint angles and velocities; u is the torque at the second joint. The dynamics d reconstruct the state trajectory from the controls, and f is the trajectory cost.</p>
+            <h4>A smooth teacher isolates the learning problem.</h4><p>We first amortize the control policy with PPO. Both proxies then imitate this differentiable teacher using the same DAgger-style pipeline; Sobolev also receives selected state-to-action derivatives through automatic differentiation.</p><p>This removes numerical solver-gradient reconstruction as a source of noise. With feasibility enforced through bounded actions and dynamics, generalization is assessed in objective performance: reaching a common performance threshold sooner makes its benefit observable during learning.</p>
+            <a class="text-link" href="#results" data-result-link="control">See the control evidence <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+      </article>
+
+      <article class="problem-card" aria-labelledby="dispatch-problem-title">
+        <div class="problem-heading"><span class="problem-index">02</span><div><p class="section-kicker">AC optimal power flow / Energy dispatch</p><h3 id="dispatch-problem-title">Generalization in a general<br> constrained optimization problem.</h3></div></div>
+        <div class="problem-layout">
+          <figure class="animation-figure" data-animation="dispatch">
+            <div class="animation-topline"><span>Coupled physical requirements</span><span>Illustration · 14.4 s loop</span></div>
+            <canvas width="960" height="870" role="img" aria-label="Schematic energy dispatch network with changing demand, thermal and voltage limits. Below it, illustrative per-entry sensitivity-loss gradients point in different directions in a two-dimensional proxy-parameter plane. A changing uniform mask selects which gradients enter the average."></canvas>
+            <div class="figure-slider"><label for="dispatch-density">Sensitivity terms in the toy update</label><output id="dispatch-count" for="dispatch-density">3 / 12</output><input id="dispatch-density" type="range" min="1" max="12" step="1" value="3" aria-describedby="dispatch-caption"></div>
+            <div class="animation-controls"><button type="button" data-action="play" aria-pressed="true">Pause</button><button type="button" data-action="step">New mask</button><a href="assets/dispatch-geometry.gif" download>Download GIF ↗</a></div>
+            <figcaption id="dispatch-caption">A schematic network, not an AC-OPF simulation. The lower plane shows contours of a synthetic matching loss and opposing gradients of individual <em>derivative-matching</em> terms with respect to proxy parameters. These are not extra physical-constraint penalty losses. The GIF uses 3 of 12 terms; the live slider also shows dense matching.</figcaption>
+            <noscript><img src="assets/dispatch-geometry.png" alt="Schematic power grid and potentially conflicting derivative-loss gradients."></noscript>
+          </figure>
+          <div class="problem-copy"><p class="formulation-label">AC-OPF formulation</p>
+            <div class="program ac-program" role="math" aria-label="Minimize total generation cost over complex generation, voltages and branch flows, subject to nodal power balance, AC branch equations, generator bounds, voltage bounds and thermal limits.">
+              <div class="program-row"><span class="operator">min<small>S<sup>g</sup>, V, S</small></span><span>∑<sub>i∈𝒢</sub> c<sub>i</sub>(P<sub>i</sub><sup>g</sup>)</span></div>
+              <div class="program-row"><span>s.t.</span><span>S<sub>i</sub><sup>g</sup> − S<sub>i</sub><sup>d</sup> = ∑<sub>j∈𝒩(i)</sub> S<sub>ij</sub><small>Power balance at every bus i</small></span></div>
+              <div class="program-row"><span></span><span>S<sub>ij</sub> = (Y<sub>ij</sub> + Y<sub>ij</sub><sup>c</sup>)<sup>*</sup>|V<sub>i</sub>|²<small>− Y<sub>ij</sub><sup>*</sup> V<sub>i</sub>V<sub>j</sub><sup>*</sup>, for each directed branch (i, j)</small></span></div>
+              <div class="program-row"><span></span><span>P̲<sub>i</sub><sup>g</sup> ≤ P<sub>i</sub><sup>g</sup> ≤ P̅<sub>i</sub><sup>g</sup><small>Q̲<sub>i</sub><sup>g</sup> ≤ Q<sub>i</sub><sup>g</sup> ≤ Q̅<sub>i</sub><sup>g</sup></small></span></div>
+              <div class="program-row"><span></span><span>V̲<sub>i</sub> ≤ |V<sub>i</sub>| ≤ V̅<sub>i</sub></span></div>
+              <div class="program-row"><span></span><span>|S<sub>ij</sub>|² ≤ S̅<sub>ij</sub>².</span></div>
+            </div>
+            <p class="variable-key">S = P + 𝑖Q denotes complex power, V voltage, Y branch admittance, and Y<sup>c</sup> branch charging. The star denotes complex conjugation. Bounds apply to the corresponding buses, generators and directed branches; generation is zero at buses without a generator. Demand S<sup>d</sup> is the varying input. This is the network formulation presented in the paper.</p>
+            <h4>One input change affects many coupled decisions.</h4><p>Changing demand affects cost, nodal balance, voltages, generator limits and line loadings together. We reconstruct local sensitivities of the solver-selected solution through implicit differentiation of its optimality conditions.</p><p>Matching these sensitivities can introduce competing directions in the proxy’s parameter space. Uniform masking limits the number of concurrent derivative conditions; it does not choose which physical requirements matter. Evaluation therefore tracks both optimality and constraint violations.</p>
+            <a class="text-link" href="#results" data-result-link="opf">See the feasibility evidence <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+      </article>
+
+      <article class="problem-card" aria-labelledby="portfolio-problem-title">
+        <div class="problem-heading"><span class="problem-index">03</span><div><p class="section-kicker">Mean–variance portfolios / Allocation under risk</p><h3 id="portfolio-problem-title">Impacts of uninformative<br> sensitivities.</h3></div></div>
+        <div class="problem-layout">
+          <figure class="animation-figure" data-animation="portfolio">
+            <div class="animation-topline"><span>Sparse allocations, local information</span><span>Illustration · 16 s loop</span></div>
+            <canvas width="960" height="870" role="img" aria-label="Synthetic expected returns and optimal allocations in a six-asset mean-variance portfolio. A surface shows allocation to asset A as the expected returns of assets A and B change. Flat and kinked regions illustrate sparse, localized sensitivities."></canvas>
+            <div class="figure-slider"><label for="portfolio-risk">Risk cap σ / budget B</label><output id="portfolio-risk-label" for="portfolio-risk">14%</output><input id="portfolio-risk" type="range" min="6" max="30" value="14" step="1" aria-describedby="portfolio-caption"></div>
+            <div class="animation-controls"><button type="button" data-action="play" aria-pressed="true">Pause</button><a href="assets/portfolio-geometry.gif" download>Download GIF ↗</a></div>
+            <figcaption id="portfolio-caption">A solved six-asset toy model with fixed diagonal covariance and synthetic, fluctuating expected returns. The surface is the optimal allocation x<sub>A</sub>(μ<sub>A</sub>, μ<sub>B</sub>), not a noisy or nonconvex objective. Flat regions can carry zero sensitivity; active-set changes create kinks. The GIF uses a 14% risk cap.</figcaption>
+            <noscript><img src="assets/portfolio-geometry.png" alt="Six-asset portfolio toy model and a sparse allocation map."></noscript>
+          </figure>
+          <div class="problem-copy"><p class="formulation-label">Mean–variance allocation problem</p>
+            <div class="program" role="math" aria-label="Maximize total expected return over nonnegative allocations subject to a covariance risk cap and a total budget constraint.">
+              <div class="program-row"><span class="operator">max<small>x ∈ ℝⁿ</small></span><span>∑<sub>i=1</sub><sup>n</sup> μ<sub>i</sub>x<sub>i</sub></span></div>
+              <div class="program-row"><span>s.t.</span><span>xᵀΣx ≤ σ<sub>max</sub>²</span></div>
+              <div class="program-row"><span></span><span>∑<sub>i=1</sub><sup>n</sup> x<sub>i</sub> ≤ B</span></div>
+              <div class="program-row"><span></span><span>x<sub>i</sub> ≥ 0, <small>i = 1, …, n.</small></span></div>
+            </div>
+            <p class="variable-key">x gives the asset allocations, μ the expected returns, Σ the positive semidefinite covariance matrix, B the budget, and σ<sub>max</sub> the standard-deviation risk cap. Inputs μ and σ<sub>max</sub> vary while covariance remains fixed. Unspent budget is allowed.</p>
+            <h4>Convexity does not make every derivative informative.</h4><p>Optimal portfolios can contain many zero allocations. Their corresponding local derivatives may also vanish; small input changes can activate different assets and change the Jacobian sharply.</p><p>Both experimental proxies enforce feasibility by construction. This setting tests what remains when derivative information is highly localized: a valid sensitivity at one sample may provide little guidance elsewhere. The role of regularity is separate from whether a feasibility-preserving reconstruction exists.</p>
+            <a class="text-link" href="#results" data-result-link="portfolio">See the limits of sensitivity supervision <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+      </article>
+      <p class="illustration-note">All animations can be paused. Reduced-motion preferences are respected. The landscapes illustrate local decision geometry and are separate from the paper’s measured results.</p>
+    </section>
+
     <section class="results-section section-wrap" id="results" aria-labelledby="results-title">
-      <div class="section-heading"><div><p class="section-kicker">The evidence</p><h2 class="section-title" id="results-title">Where sensitivities help.<br>And where they help less.</h2></div><p class="section-intro">Three settings connect the quality of local sensitivity information to the behavior of the learned proxy.</p></div>
+      <div class="section-heading"><div><p class="section-kicker">The evidence</p><h2 class="section-title" id="results-title">Where sensitivities help.<br> And where they help less.</h2></div><p class="section-intro">We assess generalization first in a regular control map, then in a large constrained problem, and finally where sensitivities become less informative.</p></div>
       <div class="result-tabs" role="tablist" aria-label="Experimental settings">
-        <button id="tab-opf" type="button" role="tab" aria-selected="true" aria-controls="panel-opf" data-panel="opf">AC power flow</button>
-        <button id="tab-control" type="button" role="tab" aria-selected="false" aria-controls="panel-control" data-panel="control" tabindex="-1">Control distillation</button>
-        <button id="tab-portfolio" type="button" role="tab" aria-selected="false" aria-controls="panel-portfolio" data-panel="portfolio" tabindex="-1">Portfolio optimization</button>
+        <button id="tab-control" type="button" role="tab" aria-selected="true" aria-controls="panel-control" data-panel="control">01 · Acrobot</button>
+        <button id="tab-opf" type="button" role="tab" aria-selected="false" aria-controls="panel-opf" data-panel="opf" tabindex="-1">02 · AC power flow</button>
+        <button id="tab-portfolio" type="button" role="tab" aria-selected="false" aria-controls="panel-portfolio" data-panel="portfolio" tabindex="-1">03 · Portfolio</button>
       </div>
-      <div class="result-panel" id="panel-opf" role="tabpanel" aria-labelledby="tab-opf" tabindex="0">
-        <div class="panel-heading"><div><span class="panel-label">Constrained, locally informative sensitivities</span><h3>Better feasibility with small objective gaps</h3></div><p>Mean absolute infeasibility decreases on all three networks. The optimality gap increases on two, making the operating tradeoff explicit.</p></div>
+      <div class="result-panel" id="panel-opf" role="tabpanel" aria-labelledby="tab-opf" tabindex="0" hidden>
+        <div class="panel-heading"><div><span class="panel-label">02 / Many coupled equalities and inequalities</span><h3>Generalization in a general constrained optimization problem</h3></div><p>AC-OPF tests objective quality and feasibility together, using sensitivities reconstructed from constrained solver solutions through implicit differentiation. Networks have up to 6,468 buses.</p></div>
+        <div class="rmi-feature">
+          <div><span class="panel-label">The strongest feasibility improvement</span><h4>Smaller worst violations<br> across the test instances.</h4><p>Sobolev matches or improves each instance’s maximum violation in over 85% of cases. Median normalized improvements are particularly large on PEGASE and RTE.</p><div class="rmi-metrics"><div><strong>≈18%</strong><span>IEEE-300</span></div><div><strong>≈400%</strong><span>PEGASE-1k</span></div><div><strong>≈180%</strong><span>RTE-6k</span></div></div></div>
+          <figure><img src="assets/opf-worst-violation.png" width="1400" height="934" loading="lazy" alt="Paper violin plot of normalized improvement in maximum infeasibility across the three networks. Median improvements are approximately 18%, 400%, and 180%; positive values favor Sobolev."><figcaption>Distribution of the paper’s normalized relative maximum-infeasibility improvement (RMI). Positive values favor Sobolev.</figcaption></figure>
+        </div>
+        <div class="rmi-definition" id="rmi-definition"><p><strong>Reading these percentages.</strong> Let v<sub>i</sub> be the worst constraint violation in test instance i. The paper uses a shared Sobolev scale:</p><div class="rmi-equation" role="math" aria-label="RMI for instance i equals 100 times its worst value-only violation minus its worst Sobolev violation, divided by the largest Sobolev violation across test instances."><span>RMI<sub>i</sub> = 100 ·</span><span class="fraction"><span>v<sub>i</sub><sup>value-only</sup> − v<sub>i</sub><sup>Sobolev</sup></span><span>max<sub>k</sub> v<sub>k</sub><sup>Sobolev</sup></span></span></div><p>This is a normalized improvement, not a percentage reduction relative to each instance’s baseline. Values above 100% are possible on this shared scale.</p></div>
         <div class="opf-grid">
           <figure class="opf-chart"><div class="chart-legend"><span><i class="value-only"></i> Value-only</span><span><i class="sobolev"></i> Masked Sobolev</span></div><svg id="opf-chart" viewBox="0 0 650 335" role="img" aria-labelledby="opf-chart-title opf-chart-desc"><title id="opf-chart-title">Mean absolute infeasibility across AC power flow networks</title><desc id="opf-chart-desc">IEEE-300: value-only 0.0116, Sobolev 0.0099. PEGASE-1k: 0.0098 versus 0.0066. RTE-6k: 0.0059 versus 0.0042. Lower is better.</desc></svg><figcaption>Mean absolute infeasibility (INF). Lower is better. Reductions of 15%, 33%, and 29% use value-only INF as the denominator.</figcaption></figure>
           <div class="gap-results"><h4>The objective tradeoff</h4><table><caption>Relative optimality gap</caption><thead><tr><th scope="col">Network</th><th scope="col">Value-only</th><th scope="col">Sobolev</th></tr></thead><tbody><tr><th scope="row">IEEE-300</th><td>0.02%</td><td>0.22%</td></tr><tr><th scope="row">PEGASE-1k</th><td>0.07%</td><td>0.15%</td></tr><tr><th scope="row">RTE-6k</th><td>0.07%</td><td>0.07%</td></tr></tbody></table><p class="table-note">Across test cases, Sobolev matches or improves maximum constraint violations in over 85% of cases.</p></div>
@@ -116,20 +217,20 @@
         <div class="ablation"><div><span class="panel-label">The mask-density ablation</span><h4>Sparse supervision matters.</h4><p>On IEEE-300, dense matching has <strong>5.2× higher INF</strong> than the 5% mask, despite a smaller objective gap.</p><p class="table-note">These are separate configurations from the three-network comparison above.</p></div><div class="table-scroll"><table><caption class="sr-only">IEEE-300 mask-density ablation</caption><thead><tr><th scope="col">Density</th><th scope="col">MSE</th><th scope="col">Gap</th><th scope="col">INF ↓</th></tr></thead><tbody><tr><th scope="row">5%</th><td>0.0065</td><td>0.22%</td><td>0.0099</td></tr><tr class="best-inf"><th scope="row">10%</th><td>0.0088</td><td>0.33%</td><td><strong>0.0094</strong></td></tr><tr><th scope="row">25%</th><td>0.0087</td><td>0.29%</td><td>0.0141</td></tr><tr><th scope="row">100%</th><td>0.0120</td><td>0.17%</td><td>0.0517</td></tr></tbody></table></div></div>
       </div>
 
-      <div class="result-panel" id="panel-control" role="tabpanel" aria-labelledby="tab-control" tabindex="0" hidden>
-        <div class="panel-heading"><div><span class="panel-label">Smooth, well-covered control regime</span><h3>Faster policy distillation in Acrobot</h3></div><p>Both methods use the same DAgger-style pipeline to distill a PPO reference controller. Sobolev also matches selected state-to-action sensitivities.</p></div>
+      <div class="result-panel" id="panel-control" role="tabpanel" aria-labelledby="tab-control" tabindex="0">
+        <div class="panel-heading"><div><span class="panel-label">01 / A regular, mostly smooth decision map</span><h3>Generalization under regularity and smooth mapping</h3></div><p>We use a PPO teacher to obtain a smooth, amortized control map before training either proxy. This isolates the contribution of sensitivity supervision from numerical reconstruction of solver gradients.</p></div>
         <div class="control-layout"><figure><img src="assets/acrobot-training.png" width="1736" height="854" loading="lazy" alt="Acrobot training curves: the highlighted orange Sobolev run approaches reference policy performance earlier than the highlighted blue value-only run. Fainter curves show the hyperparameter sweep."><figcaption>Mean tip height versus training iteration. Orange: Sobolev. Blue: value-only. Black: reference policy.</figcaption></figure><div class="control-summary"><p class="result-number">2.5<span>×</span></p><h4>Fewer iterations to the threshold</h4><p>The first reconstructed threshold crossings occur at <strong>1,349</strong> versus <strong>3,446</strong> iterations, using 95% of reference performance.</p><p>About <strong>16 vs. 40 minutes</strong>, despite a 2% increase in per-iteration cost.</p></div></div>
-        <p class="result-caveat">Here the derivative targets come from the PPO reference controller, rather than differentiating an optimal-control solver. The threshold uses a 100-step moving average of mean tip height.</p>
+        <p class="result-caveat">Bounded actions and states reconstructed through the dynamics ensure feasibility, so objective performance provides the common measure of generalization. Both proxies use the same DAgger-style imitation pipeline; Sobolev also matches selected teacher derivatives obtained by automatic differentiation. The threshold uses a 100-step moving average of mean tip height. Feasibility by construction alone does not explain the gain: the regularity of the control map also matters.</p>
       </div>
 
       <div class="result-panel" id="panel-portfolio" role="tabpanel" aria-labelledby="tab-portfolio" tabindex="0" hidden>
-        <div class="panel-heading"><div><span class="panel-label">Highly localized or near-zero sensitivities</span><h3>A useful counterexample</h3></div><p>Mean–variance portfolio optimization shows why locally valid derivatives need not provide useful interpolation directions across neighboring active-set regimes.</p></div>
-        <div class="portfolio-layout"><div><h4>The benefit changes with the risk regime</h4><p>Portfolios are often sparse, leaving many sensitivities close to zero. Small parameter changes can alter the active assets or sharply change the interaction of risk, budget, and bound constraints.</p><p>Under tight risk caps, value-only training has the smaller mean gap. Outside that region, Sobolev performs better in this experiment.</p></div><div><table class="portfolio-table"><caption>Test optimality gap, mean ± standard deviation (%)</caption><thead><tr><th scope="col">Risk cap / budget</th><th scope="col">Value-only</th><th scope="col">Sobolev</th></tr></thead><tbody><tr><th scope="row">≤ 10%</th><td><strong>14.7 ± 21.2</strong></td><td>29.5 ± 26.9</td></tr><tr><th scope="row">&gt; 10%</th><td>18.9 ± 20.2</td><td><strong>8.7 ± 9.5</strong></td></tr></tbody></table><p class="table-note">Lower is better. This result motivates using local sensitivity information selectively by regime, rather than assuming a universal advantage.</p></div></div>
+        <div class="panel-heading"><div><span class="panel-label">03 / Sparse decisions and changing active sets</span><h3>Impacts of uninformative sensitivities</h3></div><p>Mean–variance portfolio optimization shows why locally valid derivatives need not provide useful interpolation directions across neighboring active-set regimes.</p></div>
+        <div class="portfolio-layout"><div><h4>The benefit changes with the risk regime</h4><p>Portfolios are often sparse, leaving many sensitivities close to zero. Small parameter changes can alter the active assets or sharply change the interaction of risk, budget, and bound constraints.</p><p>Both methods enforce feasibility by construction and train against the portfolio objective. Sobolev adds solver sensitivities. The objective-only baseline has the smaller mean gap under tight risk caps; outside that region, Sobolev performs better in this experiment.</p></div><div><table class="portfolio-table"><caption>Test optimality gap, mean ± standard deviation (%)</caption><thead><tr><th scope="col">Risk cap / budget</th><th scope="col">Objective-only</th><th scope="col">Sobolev</th></tr></thead><tbody><tr><th scope="row">≤ 10%</th><td><strong>14.7 ± 21.2</strong></td><td>29.5 ± 26.9</td></tr><tr><th scope="row">&gt; 10%</th><td>18.9 ± 20.2</td><td><strong>8.7 ± 9.5</strong></td></tr></tbody></table><p class="table-note">Lower is better. This result motivates using local sensitivity information selectively by regime, rather than assuming a universal advantage.</p></div></div>
       </div>
-      <noscript><p class="no-script">Additional findings: Acrobot reaches the reference-performance threshold in about 2.5× fewer iterations. In tight-risk portfolios, mean gaps are 29.5% for Sobolev and 14.7% for value-only training.</p></noscript>
+      <noscript><p class="no-script">Additional findings: Acrobot reaches the reference-performance threshold in about 2.5× fewer iterations. In tight-risk portfolios, mean gaps are 29.5% for Sobolev and 14.7% for objective-only training.</p></noscript>
     </section>
 
-    <section class="theory section-wrap" aria-labelledby="theory-title"><div><p class="section-kicker">A theoretical perspective</p><h2 class="section-title" id="theory-title">Local information can change the error order.</h2><p>In a regular region, exact value-and-Jacobian interpolation improves the bound on uniform value error as the covering radius δ decreases.</p></div><div class="error-orders"><div><span>Value matching</span><strong>O(δ)</strong></div><div><span>Value + Jacobian matching</span><strong>O(δ²)</strong></div><p>Idealized regional bounds under the stated regularity assumptions, including Lipschitz Jacobians for the joint bound. These are not convergence guarantees for masked training.</p></div></section>
+    <section class="theory section-wrap" aria-labelledby="theory-title"><div><p class="section-kicker">A theoretical perspective</p><h2 class="section-title" id="theory-title">Local information can change the error order.</h2><p>In a regular region, exact value-and-Jacobian interpolation improves the bound on uniform value error as the covering radius δ decreases.</p></div><div class="error-orders"><div><span>Value matching</span><strong>O(δ)</strong></div><div><span>Value + Jacobian matching</span><strong>O(δ²)</strong></div><p>Idealized regional bounds under the stated regularity assumptions, including Lipschitz Jacobians for the joint bound. These idealized regional bounds do not guarantee convergence of masked training, but explain how informative sensitivities can strengthen interpolation between samples.</p><details class="bound-details"><summary>Assumptions and complete bounds</summary><p>On a compact, convex parameter region, let δ = sup<sub>p</sub> min<sub>i</sub> ‖p − p<sub>i</sub>‖ be the training set’s covering radius. Under exact interpolation at the samples:</p><div class="bound-row"><span>Values</span><span>sup<sub>p</sub> ‖ĝ(p) − g(p)‖ ≤ (L<sub>g</sub> + L<sub>ĝ</sub>)δ</span></div><div class="bound-row"><span>Jacobians</span><span>sup<sub>p</sub> ‖Dĝ(p) − Dg(p)‖ ≤ (M<sub>g</sub> + M<sub>ĝ</sub>)δ</span></div><div class="bound-row"><span>Both</span><span>sup<sub>p</sub> ‖ĝ(p) − g(p)‖ ≤ ½(M<sub>g</sub> + M<sub>ĝ</sub>)δ²</span></div><p>L denotes a map’s Lipschitz constant and M its Jacobian’s Lipschitz constant. The derivative and joint bounds require continuously differentiable maps with Lipschitz Jacobians. These assumptions apply within regular regions, not across arbitrary active-set transitions; practical training need not attain exact interpolation.</p></details></div></section>
 
     <section class="citation-section section-wrap" id="citation" aria-labelledby="citation-title"><div><p class="section-kicker">Reference</p><h2 class="section-title" id="citation-title">Cite this work.</h2><p>Camera-ready paper and code links will appear here when available.</p></div><div class="citation-code"><div class="code-heading"><span>BibTeX</span><button type="button" id="copy-citation">Copy citation <span aria-hidden="true">⧉</span></button></div><pre><code id="bibtex">@inproceedings{rosemberg2026masked,
   title = {Masked Sobolev Training for

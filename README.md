@@ -66,3 +66,57 @@ uses the first reconstructed threshold crossings, not an average over runs.
   year = {2026}
 }
 ```
+
+## Illustrations and animation exports
+
+The original visual design is retained. The expanded story follows the paper's
+progression: generalization under regularity, general constrained optimization,
+and the limits of highly localized sensitivities. The portfolio baseline is
+objective-only, with feasibility enforced by construction in both methods.
+
+`docs/illustrations.js` supplies four live canvas illustrations. Every widget
+has a pause control and speed selector; it stops advancing when offscreen or in
+a hidden tab, and starts paused for reduced-motion users. GIFs are downloaded
+on demand, rather than autoplaying unpausable media. PNG stills are provided for
+JavaScript-disabled browsers. GIFs use 10 fps with 12–16-second loops; the mask
+holds for 3.6 seconds per update.
+
+- **Masking:** new input and uniform fixed-size mask at each illustrated update;
+  complete value supervision and the same retained entries in both Jacobians.
+- **Acrobot:** illustrative kinematics and a synthetic smooth local policy slice.
+  This is neither a PPO rollout nor the control cost landscape.
+- **Dispatch:** a schematic network, not a solved AC-OPF trajectory. The lower
+  plane illustrates gradients and contours of a synthetic normalized mean of
+  per-entry quadratic derivative-matching losses. These are not additional
+  objective/constraint penalty terms in the experimental loss. All selected
+  terms have equal sampling probability; the mask is not adaptive.
+- **Portfolio:** a solved six-asset toy instance with diagonal covariance,
+  synthetic expected returns, nonnegative allocations, a risk cap and an
+  inequality budget. A closed-form KKT solution plus a scalar budget-multiplier
+  search computes the allocations. The surface shows allocation to asset A as
+  two expected returns vary; it is not a nonconvex portfolio objective. The
+  covariance diagonal is `[.22², .31², .18², .25², .21², .28²]`, and B = 1.
+
+These visuals are explanatory and separate from the measured results. The
+worst-violation violin plot is exported from the paper's figure. The highlighted
+18%, 400% and 180% medians use the paper's **normalized RMI**: the difference
+between each instance's worst baseline and Sobolev violations, divided by the
+single largest Sobolev violation in that network's test set. They are not
+ordinary baseline-relative percent reductions; the page states this explicitly.
+
+### Regenerate GIFs and stills (optional)
+
+The public site needs no build or package installation. To edit and export the
+animations locally, install Node.js, FFmpeg and the optional development tool:
+
+```sh
+npm install
+npx playwright install chromium
+npm run render:gifs
+```
+
+The export script uses the same frame renderer as the live page and writes four
+GIFs and four PNG stills to `docs/assets/`. It starts a temporary local server
+and removes its frame directory on completion. An existing browser executable
+can be selected with `CHROMIUM_EXECUTABLE`; `PLAYWRIGHT_MODULE` can select an
+already installed Playwright module. Neither setting is needed normally.
