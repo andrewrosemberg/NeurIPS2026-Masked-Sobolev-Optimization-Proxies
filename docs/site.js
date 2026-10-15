@@ -18,38 +18,6 @@ for (const resource of document.querySelectorAll('[data-resource]')) {
   resource.querySelector('[data-resource-status]').textContent = 'Available now';
 }
 
-const grid = document.getElementById('mask-grid');
-const cells = Array.from({ length: 144 }, () => {
-  const cell = document.createElement('span');
-  cell.className = 'matrix-cell';
-  grid.append(cell);
-  return cell;
-});
-const density = document.getElementById('density');
-
-function randomIndex(upperBound) {
-  const sample = new Uint32Array(1);
-  const limit = Math.floor(4294967296 / upperBound) * upperBound;
-  do { crypto.getRandomValues(sample); } while (sample[0] >= limit);
-  return sample[0] % upperBound;
-}
-
-function resampleMask() {
-  const count = Math.round(cells.length * Number(density.value) / 100);
-  const order = cells.map((_, index) => index);
-  for (let i = order.length - 1; i > 0; i--) {
-    const j = randomIndex(i + 1);
-    [order[i], order[j]] = [order[j], order[i]];
-  }
-  const selected = new Set(order.slice(0, count));
-  cells.forEach((cell, index) => cell.classList.toggle('selected', selected.has(index)));
-  document.getElementById('density-label').textContent = `${density.value}%`;
-  document.getElementById('entry-count').textContent = `${count} of ${cells.length} entries`;
-}
-density.addEventListener('input', resampleMask);
-document.getElementById('resample').addEventListener('click', resampleMask);
-resampleMask();
-
 const tabs = [...document.querySelectorAll('[role="tab"]')];
 function selectTab(tab) {
   for (const item of tabs) {
@@ -127,3 +95,12 @@ copyButton.addEventListener('click', async () => {
     status.textContent = 'Automatic copying was unavailable. The citation is selected for you to copy.';
   }
 });
+
+for (const link of document.querySelectorAll('[data-open-case]')) {
+  link.addEventListener('click', () => selectTab(document.getElementById(`tab-${link.dataset.openCase}`)));
+}
+
+if (location.hash === '#rmi-definition') {
+  selectTab(document.getElementById('tab-opf'));
+  requestAnimationFrame(() => document.getElementById('rmi-definition').scrollIntoView());
+}

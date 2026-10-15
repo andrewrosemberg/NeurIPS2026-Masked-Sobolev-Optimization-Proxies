@@ -1,170 +1,124 @@
 'use strict';
-/* Native canvas illustrations. No experimental measurements are generated here.
-   Deterministic frame rendering is shared by the live widgets and GIF exporter. */
 (() => {
-  const C = {ink:'#202a33', muted:'#687078', purple:'#7551a7', pale:'#eee8f5', copper:'#bb744a', blue:'#527b98', green:'#568777', line:'#ddded8', paper:'#f8f7f3', white:'#ffffff'};
-  const TAU = Math.PI * 2;
-  const durations = {workflow:14.4, control:12, dispatch:14.4, portfolio:16};
-  const widgets = new Map();
+  const colors={ink:'#202a33',muted:'#687078',purple:'#7551a7',blue:'#6486b1',copper:'#bc7944',green:'#739654',line:'#ddded8'};
+  const durations={workflow:20,control:16,dispatch:16,portfolio:16};
+  const widgets=new Map(),assets={},toys={};
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-  function text(ctx,str,x,y,size=24,color=C.ink,align='left',weight=400){ctx.fillStyle=color;ctx.font=`${weight} ${size}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;ctx.textAlign=align;ctx.textBaseline='alphabetic';ctx.fillText(str,x,y);}
-  function line(ctx,pts,color=C.line,width=2,dash=[]){ctx.beginPath();ctx.setLineDash(dash);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineJoin='round';pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.stroke();ctx.setLineDash([]);}
-  function box(ctx,x,y,w,h,fill=C.paper,stroke=C.line,r=14){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke();}}
-  function dot(ctx,x,y,r,color){ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fillStyle=color;ctx.fill();}
-  function arrow(ctx,x,y,xx,yy,color=C.purple,width=3,head=11){line(ctx,[[x,y],[xx,yy]],color,width);const a=Math.atan2(yy-y,xx-x);ctx.beginPath();ctx.moveTo(xx,yy);ctx.lineTo(xx-head*Math.cos(a-.45),yy-head*Math.sin(a-.45));ctx.lineTo(xx-head*Math.cos(a+.45),yy-head*Math.sin(a+.45));ctx.closePath();ctx.fillStyle=color;ctx.fill();}
-  function polygon(ctx,pts,fill,stroke=C.line,width=1){ctx.beginPath();pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke();}}
-  function seeded(seed){let a=seed|0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
-  function mask(seed,n,k){const rand=seeded(seed),order=Array.from({length:n},(_,i)=>i);for(let i=n-1;i>0;i--){const j=Math.floor(rand()*(i+1));[order[i],order[j]]=[order[j],order[i]];}return new Set(order.slice(0,k));}
-  function matrix(ctx,x,y,size,n,selected,dim=false){const gap=2.5,cell=(size-gap*(n-1))/n;for(let i=0;i<n*n;i++){const on=selected.has(i);box(ctx,x+(i%n)*(cell+gap),y+Math.floor(i/n)*(cell+gap),cell,cell,on?C.purple:(dim?'#e8e9e6':'#d9dce0'),null,1.5);}}
-  function base(ctx,w,h){ctx.clearRect(0,0,w,h);ctx.fillStyle=C.white;ctx.fillRect(0,0,w,h);}
+  function label(ctx,str,x,y,size=28,color=colors.ink,align='left',serif=false){ctx.font=`${size}px ${serif?'Georgia, serif':'-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'}`;ctx.fillStyle=color;ctx.textAlign=align;ctx.textBaseline='alphabetic';ctx.fillText(str,x,y);}
+  function line(ctx,points,color=colors.line,width=3,dash=[]){ctx.beginPath();ctx.setLineDash(dash);ctx.lineWidth=width;ctx.strokeStyle=color;ctx.lineJoin='round';points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.stroke();ctx.setLineDash([]);}
+  function dot(ctx,x,y,r,color,ring=false){ctx.beginPath();ctx.arc(x,y,r,0,2*Math.PI);ctx.fillStyle=color;ctx.fill();if(ring){ctx.strokeStyle='white';ctx.lineWidth=3;ctx.stroke();}}
+  function arrow(ctx,x,y,xx,yy,color,width=4){line(ctx,[[x,y],[xx,yy]],color,width);const a=Math.atan2(yy-y,xx-x),r=12;ctx.beginPath();ctx.moveTo(xx,yy);ctx.lineTo(xx-r*Math.cos(a-.45),yy-r*Math.sin(a-.45));ctx.lineTo(xx-r*Math.cos(a+.45),yy-r*Math.sin(a+.45));ctx.closePath();ctx.fillStyle=color;ctx.fill();}
+  function box(ctx,x,y,w,h,fill,stroke=null,r=8){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=3;ctx.stroke();}}
+  function seedRandom(seed){let a=seed;return()=>{a|=0;a=a+0x6D2B79F5|0;let z=Math.imul(a^a>>>15,1|a);z=z+Math.imul(z^z>>>7,61|z)^z;return((z^z>>>14)>>>0)/4294967296;};}
+  function mask(seed){const rand=seedRandom(seed),a=Array.from({length:64},(_,i)=>i);for(let i=63;i>0;i--){const j=Math.floor(rand()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return new Set(a.slice(0,3));}
+  function fit(ctx,img,x,y,w,h){const scale=Math.min(w/img.width,h/img.height);ctx.drawImage(img,x+(w-img.width*scale)/2,y+(h-img.height*scale)/2,img.width*scale,img.height*scale);}
+  function matrix(ctx,x,y,selected){for(let i=0;i<64;i++){box(ctx,x+(i%8)*16,y+Math.floor(i/8)*16,13,13,selected.has(i)?colors.purple:'#ffffff99',null,1);}}
+  // Arc-length parameterization keeps every moving marker on the drawn polyline.
+  function pathPoint(points,fraction){const lengths=points.slice(1).map((p,i)=>Math.hypot(p[0]-points[i][0],p[1]-points[i][1]));let distance=clamp(fraction,0,1)*lengths.reduce((a,b)=>a+b,0);for(let i=0;i<lengths.length;i++){if(distance<=lengths[i]||i===lengths.length-1){const f=distance/lengths[i];return [points[i][0]+(points[i+1][0]-points[i][0])*f,points[i][1]+(points[i+1][1]-points[i][1])*f];}distance-=lengths[i];}return points.at(-1);}
+  function moving(ctx,phase,start,end,points,color,occlude=[]){if(phase<start||phase>end)return;const [x,y]=pathPoint(points,(phase-start)/(end-start));if(occlude.some(([xx,yy,w,h])=>x>xx&&x<xx+w&&y>yy&&y<yy+h))return;dot(ctx,x,y,9,color,true);}
 
   function workflow(ctx,t){
-    base(ctx,960,640);
-    const step=Math.floor(t/3.6)%4,phase=(t%3.6)/3.6,sel=mask(120+step,144,7);
-    text(ctx,`UPDATE 0${step+1} / NEW INPUT + NEW MASK`,28,40,19,C.muted,'left',600);
-    // Feedback updates the proxy only. Offline references have no backpropagation path.
-    line(ctx,[[885,320],[885,70],[320,70],[320,173]],C.purple,2,[7,7]);
-    text(ctx,'update θ',600,61,19,C.purple,'center');
-    box(ctx,20,299,130,90,C.paper);text(ctx,`p${'₁₂₃₄'[step]}`,85,342,36,C.ink,'center');text(ctx,'input',85,371,18,C.muted,'center');
-    line(ctx,[[150,344],[184,344],[184,222],[230,222]],C.line,3);line(ctx,[[184,344],[184,470],[230,470]],C.line,3);
-    box(ctx,230,177,180,90,'#eef3f6','#cfdae1');text(ctx,'Proxy ĝθ',320,216,27,C.blue,'center',550);text(ctx,'autodiff',320,246,20,C.blue,'center');
-    box(ctx,230,425,180,90,'#fbf0e8','#e5cdbd');text(ctx,'Reference g',320,464,25,C.copper,'center',550);text(ctx,'offline targets',320,494,19,C.copper,'center');
-    line(ctx,[[410,222],[445,222],[445,121],[483,121]],C.blue,2.5);arrow(ctx,445,222,483,222,C.blue,2.5,8);
-    line(ctx,[[410,470],[445,470],[445,582],[483,582]],C.copper,2.5);arrow(ctx,445,470,483,470,C.copper,2.5,8);
-    box(ctx,483,94,132,54,'#eef3f6',null,7);text(ctx,'ĝθ(p)',549,129,25,C.blue,'center');
-    box(ctx,483,555,132,54,'#fbf0e8',null,7);text(ctx,'g(p)',549,590,25,C.copper,'center');
-    text(ctx,'Dĝθ(p)',549,179,24,C.blue,'center');matrix(ctx,483,193,132,12,sel,true);
-    text(ctx,'Dg(p)',549,403,24,C.copper,'center');matrix(ctx,483,417,132,12,sel,true);
-    line(ctx,[[615,121],[913,121],[913,320]],C.blue,2.5);line(ctx,[[615,582],[913,582],[913,405]],C.copper,2.5);
-    text(ctx,'all values',735,111,19,C.muted,'center');text(ctx,'all values',735,610,19,C.muted,'center');
-    line(ctx,[[615,259],[652,259],[652,350],[690,350]],C.blue,2.5);line(ctx,[[615,483],[652,483],[652,350]],C.copper,2.5);
-    text(ctx,'same mask M',751,264,21,C.purple,'center',550);matrix(ctx,690,282,122,12,sel,true);text(ctx,'7 / 144',751,435,21,C.purple,'center');
-    arrow(ctx,812,350,835,350,C.purple,3,8);box(ctx,835,320,108,85,C.pale,'#d6c7e6');text(ctx,'ℒ',889,360,34,C.purple,'center');text(ctx,'value + λ·deriv.',889,388,13,C.purple,'center');
-    // Slow progress marks the input's travel and then holds the selected mask.
-    const travel=clamp(phase/.64,0,1);dot(ctx,150+travel*79,344-122*travel,5,C.blue);
-    const bar=clamp(phase,0,1);box(ctx,28,627,904,4,'#eae9e5',null,2);box(ctx,28,627,904*bar,4,C.purple,null,2);
+    ctx.clearRect(0,0,1600,1120);ctx.fillStyle='white';ctx.fillRect(0,0,1600,1120);ctx.save();ctx.translate(-135,-58);ctx.drawImage(assets.method,0,0,1800,1234);
+    const step=Math.floor(t/5)%4,phase=t%5,selected=mask(51+step);
+    // Reuse the paper's own network, solver, caches, AD/DiffOpt loops and arrows.
+    box(ctx,395,387,70,60,'#ffead0',null,0);label(ctx,`p${'₁₂₃₄'[step]}`,430,434,48,'#111','center',true);
+    box(ctx,1273,210,367,220,'#dce8fb','#7395c7',0);fit(ctx,assets['proxy-jacobian'],1320,221,272,45);matrix(ctx,1393,268,selected);label(ctx,'same 3 / 64 entries',1456,419,20,'#44576e','center');
+    box(ctx,1273,742,367,220,'#ffead0','#d8a00b',0);fit(ctx,assets['reference-jacobian'],1320,753,272,45);matrix(ctx,1393,800,selected);label(ctx,'same 3 / 64 entries',1456,950,20,'#6d5335','center');
+    box(ctx,1090,559,513,110,'#f7d2ce','#bd5a54',18);
+    fit(ctx,assets['loss-main'],1107,579,194,39);fit(ctx,assets['loss-value'],1107,624,194,29);
+    fit(ctx,assets['loss-numerator'],1310,575,278,35);line(ctx,[[1312,614],[1585,614]],'#5e4240',1.5);fit(ctx,assets['loss-denominator'],1389,621,122,34);
+    moving(ctx,phase,.10,.80,[[505,375],[610,375]],colors.blue);
+    moving(ctx,phase,.1,1.2,[[430,485],[430,815]],colors.copper);
+    // Successive layer highlights show neural evaluation without inventing wire paths.
+    for(let j=0;j<5;j++){const start=.75+j*.17;if(phase>start&&phase<start+.35){const x=[632,704,741,778,815][j],y=[357,320,395,320,395][j];dot(ctx,x,y,14,'#9db2d5');}}
+    moving(ctx,phase,1.2,2.0,[[870,375],[1124,375]],colors.blue);
+    moving(ctx,phase,2.05,2.8,[[1180,432],[1180,552]],colors.blue);
+    moving(ctx,phase,1.3,2.1,[[638,964],[829,964]],colors.copper);
+    moving(ctx,phase,2.1,2.85,[[981,965],[1180,965],[1180,858]],colors.copper);
+    moving(ctx,phase,2.85,3.5,[[1180,741],[1180,674]],colors.copper);
+    moving(ctx,phase,.85,1.65,[[871,247],[907,247],[907,192],[614,192],[614,261]],colors.purple,[[705,119,130,91]]);
+    moving(ctx,phase,1.7,2.7,[[835,155],[1053,155],[1053,266],[1267,266]],colors.purple);
+    moving(ctx,phase,2.75,3.5,[[1456,432],[1456,552]],colors.blue);
+    moving(ctx,phase,1.0,1.9,[[638,852],[710,852],[710,779]],colors.purple);
+    moving(ctx,phase,1.9,2.45,[[595,724],[475,724]],colors.purple);
+    moving(ctx,phase,1.9,2.6,[[815,724],[905,724],[905,846]],colors.copper);
+    moving(ctx,phase,2.6,3.4,[[981,1017],[1456,1017],[1456,967]],colors.copper);
+    moving(ctx,phase,3.4,4.0,[[1456,741],[1456,674]],colors.copper);
+    moving(ctx,phase,4.1,4.85,[[1090,614],[1054,614],[1054,454],[871,454]],'#bd5a54');
+    ctx.restore();
   }
 
-  // A projected response surface, not an optimization objective landscape.
-  function surface(ctx,fn,{x=85,y=695,w=590,depth=190,height=170,zmax=1,marker=[0,0],title='Decision-map slice',xLabel='Input 1',yLabel='Input 2',zLabel='Response',n=19}={}){
-    const project=(u,v,z)=>[x+w*(u+1)/2+depth*(v+1)/2,y-depth*.40*(v+1)-height*z/zmax];
-    const floor=[project(-1,-1,0),project(1,-1,0),project(1,1,0),project(-1,1,0)];polygon(ctx,floor,'#f4f3ef','#e1dfd8');
-    for(let j=n-1;j>=0;j--){for(let i=0;i<n;i++){const u=-1+2*i/n,v=-1+2*j/n,d=2/n,z=fn(u,v),a=clamp(z/zmax,0,1);polygon(ctx,[project(u,v,z),project(u+d,v,fn(u+d,v)),project(u+d,v+d,fn(u+d,v+d)),project(u,v+d,fn(u,v+d))],`rgb(${Math.round(227-91*a)},${Math.round(218-123*a)},${Math.round(239-68*a)})`,'#ffffffaa',.8);}}
-    line(ctx,[floor[0],floor[1]],'#9c9a99',2);line(ctx,[floor[1],floor[2]],'#9c9a99',2);
-    const [u,v]=marker,z=fn(u,v),p=project(u,v,z);const foot=project(u,v,0);line(ctx,[foot,p],C.copper,2,[4,5]);dot(ctx,...p,12,C.white);dot(ctx,...p,7,C.copper);
-    text(ctx,title,40,455,26,C.ink,'left',550);text(ctx,xLabel,x+w*.55,y+39,20,C.muted,'center');text(ctx,yLabel,x+w+depth+5,y-depth*.37+20,20,C.muted,'right');text(ctx,zLabel,45,492,20,C.purple);
-    return {project,point:p,value:z};
-  }
-
+  function frame(name,t){const data=toys[name],n=data.path.length;return data.path[Math.min(n-1,Math.floor((t%durations[name])/durations[name]*n))];}
+  function scientificMap(ctx,name,index){ctx.drawImage(assets[name],0,400,1248,976);const p=toys[name].markerPixels[index];if(p)dot(ctx,1248*p[0],400+976*p[1],11,colors.ink,true);}
+  function clear(ctx){ctx.clearRect(0,0,1248,1376);ctx.fillStyle='white';ctx.fillRect(0,0,1248,1376);line(ctx,[[40,396],[1208,396]],colors.line,2);}
   function control(ctx,t){
-    base(ctx,960,870);const a=TAU*t/12;
-    text(ctx,'ILLUSTRATIVE SWING-UP',40,45,20,C.muted,'left',600);
-    // Closed, smooth kinematic cycle. This is not a controller rollout.
-    const q1=Math.PI*Math.sin(a/2)**2+.32*Math.sin(3*a)*Math.sin(a)**2;
-    const q2=.65*Math.sin(4*a)*Math.sin(a)**2;
-    const origin=[250,235],l1=82,l2=78;
-    const elbow=[origin[0]+l1*Math.sin(q1),origin[1]+l1*Math.cos(q1)];
-    const tip=[elbow[0]+l2*Math.sin(q1+q2),elbow[1]+l2*Math.cos(q1+q2)];
-    ctx.beginPath();ctx.arc(...origin,l1+l2,0,TAU);ctx.strokeStyle='#eeede9';ctx.lineWidth=2;ctx.setLineDash([6,8]);ctx.stroke();ctx.setLineDash([]);
-    line(ctx,[[72,405],[445,405]],C.line,2);line(ctx,[origin,elbow],C.ink,11);line(ctx,[elbow,tip],C.purple,11);dot(ctx,...origin,13,C.ink);dot(ctx,...elbow,17,C.paper);dot(ctx,...elbow,9,C.purple);dot(ctx,...tip,10,C.copper);
-    text(ctx,'actuated joint',535,119,23,C.purple);text(ctx,'Only the second joint',535,154,22,C.muted);text(ctx,'receives torque.',535,184,22,C.muted);
-    text(ctx,'Smooth local response',535,260,25,C.ink,'left',550);text(ctx,'Nearby states can share',535,299,22,C.muted);text(ctx,'useful sensitivities.',535,330,22,C.muted);
-    const u=.79*Math.sin(a),v=.72*Math.sin(a+.7);const fn=(u,v)=>(1+Math.tanh(1.2*Math.sin(1.15*u)+.55*v))/2;
-    surface(ctx,fn,{marker:[u,v],title:'Synthetic local policy slice',xLabel:'State coordinate 1',yLabel:'State coordinate 2',zLabel:'Bounded action (rescaled)',y:770,height:150});
-    text(ctx,'Smooth geometry is regional; feasibility alone is insufficient.',40,855,19,C.muted);
+    clear(ctx);const data=toys.control,idx=Math.min(data.path.length-1,Math.floor(t/16*data.path.length)),p=data.path[idx],s=p.state;
+    label(ctx,'NONLINEAR ACROBOT · SWING-UP',48,52,25,colors.muted);
+    const origin=[290,220],l=78,q1=s[0],q2=s[1];const elbow=[origin[0]+l*Math.sin(q1),origin[1]+l*Math.cos(q1)],tip=[elbow[0]+l*Math.sin(q1+q2),elbow[1]+l*Math.cos(q1+q2)];
+    line(ctx,[[290,65],[290,380]],'#dedbd6',2,[5,6]);line(ctx,[origin,elbow],colors.ink,13);line(ctx,[elbow,tip],colors.purple,13);dot(ctx,...origin,14,colors.ink);dot(ctx,...elbow,15,colors.purple,true);dot(ctx,...tip,9,colors.copper);
+    // A visible actuator cue reflects the sign and magnitude of the actual optimal torque.
+    if(Math.abs(p.u)>.05){const sign=Math.sign(p.u),start=-.6*Math.PI,end=start-sign*1.3*Math.PI,r=24;ctx.beginPath();ctx.arc(elbow[0],elbow[1],r,start,end,sign>0);ctx.strokeStyle=colors.copper;ctx.lineWidth=3;ctx.stroke();const ex=elbow[0]+r*Math.cos(end),ey=elbow[1]+r*Math.sin(end),tangent=end-sign*Math.PI/2;arrow(ctx,ex-8*Math.cos(tangent),ey-8*Math.sin(tangent),ex,ey,colors.copper,3);}
+    label(ctx,`t = ${p.time.toFixed(2)} s`,610,112,32,colors.ink);
+    label(ctx,`Torque  ${p.u.toFixed(2)} N·m`,610,163,30,colors.purple);
+    label(ctx,'Bounded-torque swing-up',610,214,26,colors.muted);
+    label(ctx,'The actuator acts only at the second joint.',610,255,23,colors.muted);
+    label(ctx,'Below: a solved local MPC map near upright.',610,315,23,colors.muted);
+    scientificMap(ctx,'control',idx);
+  }
+  function dispatch(ctx,t){
+    clear(ctx);const data=toys.dispatch,idx=Math.min(data.path.length-1,Math.floor(t/16*data.path.length)),p=data.path[idx],a=[215,180],b=[615,180];
+    label(ctx,'SOLVED TWO-BUS AC NETWORK',48,48,25,colors.muted);
+    const thermal=p.active.includes(8),edge=thermal?colors.copper:'#a4afb8';arrow(ctx,...a,...b,edge,7);dot(ctx,...a,20,'white');ctx.strokeStyle=colors.ink;ctx.lineWidth=3;ctx.stroke();dot(ctx,...b,20,'white');ctx.stroke();
+    line(ctx,[[215,105],[215,158]],colors.blue,4);line(ctx,[[615,105],[615,158]],colors.copper,4);
+    label(ctx,'G₀ · lower cost',215,83,25,colors.blue,'center');label(ctx,'G₁ · higher cost',615,83,25,colors.copper,'center');
+    label(ctx,`${p.p0.toFixed(2)} p.u.`,215,131,24,colors.blue,'center');label(ctx,`${p.p1.toFixed(2)} p.u.`,615,131,24,colors.copper,'center');
+    label(ctx,`Line loading ${(p.flow/.9*100).toFixed(0)}%`,415,221,24,thermal?colors.copper:colors.muted,'center');
+    arrow(ctx,615,205,615,265,colors.ink,3);label(ctx,`Pᴰ = ${p.pd.toFixed(2)}   Qᴰ = ${p.qd.toFixed(2)}`,415,305,25,colors.ink,'center');label(ctx,`|V₁| = ${p.v[0].toFixed(3)} p.u.`,415,347,24,colors.green,'center');
+    // Actual numerical map sensitivities enter a deliberately small shared proxy:
+    // ghat_k(p)=b_k + theta_P P^D + theta_Q Q^D, k=0,1; theta=(.5,0).
+    // For each generator's Jacobian-row loss, grad=2*(theta-Dg_k).
+    const center=[1010,207],J=p.jacobian;
+    label(ctx,'Shared proxy parameters',1000,48,24,colors.muted,'center');line(ctx,[[865,207],[1160,207]],'#dfddd8',2);line(ctx,[[1010,75],[1010,330]],'#dfddd8',2);
+    for(let k=0;k<2;k++){const gx=2*(.5-J[k][0]),gy=-2*J[k][1];arrow(ctx,...center,center[0]+gx*83,center[1]-gy*83,k===0?colors.blue:colors.copper,5);}
+    dot(ctx,...center,5,colors.ink);label(ctx,'θP',1165,215,22,colors.muted);label(ctx,'θQ',1021,91,22,colors.muted);
+    label(ctx,'G₀ / G₁ sensitivity-loss gradients',1000,365,21,colors.muted,'center');
+    scientificMap(ctx,'dispatch',idx);
+  }
+  function portfolio(ctx,t){
+    clear(ctx);const data=toys.portfolio,idx=Math.min(data.path.length-1,Math.floor(t/16*data.path.length)),p=data.path[idx];
+    label(ctx,'SOLVED EIGHT-ASSET PORTFOLIO',48,48,25,colors.muted);
+    const left=70,top=200,w=420,h=105;line(ctx,[[left,95],[left,305],[left+w,305]],colors.line,2);
+    for(let k=0;k<2;k++){const points=[];for(let i=0;i<=70;i++){const j=(idx-70+i+data.path.length)%data.path.length;points.push([left+w*i/70,305-data.path[j].mu[k]/.14*190]);}line(ctx,points,k===0?colors.purple:colors.blue,4);dot(ctx,...points.at(-1),6,k===0?colors.purple:colors.blue);}
+    label(ctx,'Expected returns · A / B',left,347,24,colors.muted);label(ctx,`Risk ${p.risk.toFixed(3)} / 0.100`,left,382,23,colors.muted);
+    label(ctx,'Optimal allocations',655,84,28,colors.ink);
+    p.allocation.forEach((x,i)=>{const y=102+i*31;label(ctx,String.fromCharCode(65+i),655,y+21,23,colors.muted);box(ctx,694,y,345,23,'#f0eeea',null,3);if(x>1e-8)box(ctx,694,y,345*x,23,i===0?colors.purple:i===1?colors.blue:colors.copper,null,3);label(ctx,`${(100*x).toFixed(0)}%`,1060,y+21,23,colors.ink);});
+    label(ctx,`Cash ${(100*p.cash).toFixed(0)}%`,694,383,23,colors.muted);
+    scientificMap(ctx,'portfolio',idx);
   }
 
-  const gradientAngles=[.15,.85,1.55,2.3,2.95,3.5,4.0,4.6,5.1,5.65,2.7,.6];
-  function dispatch(ctx,t,opts={}){
-    base(ctx,960,870);const step=Math.floor(t/3.6)%4,sel=mask(330+step,12,opts.count??3),a=TAU*t/14.4;
-    text(ctx,'SCHEMATIC DISPATCH / CHANGING DEMAND',40,43,20,C.muted,'left',600);
-    const nodes=[[145,160],[430,115],[740,175],[560,335],[210,335]];
-    const edges=[[0,1],[1,2],[2,3],[3,4],[4,0],[1,3],[0,3]];
-    edges.forEach(([i,j],idx)=>{const [x,y]=nodes[i],[xx,yy]=nodes[j],hot=idx===2;line(ctx,[[x,y],[xx,yy]],hot?C.copper:'#a3afb7',hot?5:3);const p=(t*.11+idx*.19)%1;dot(ctx,x+(xx-x)*p,y+(yy-y)*p,5,hot?C.copper:C.purple);});
-    nodes.forEach(([x,y],i)=>{dot(ctx,x,y,21,C.white);ctx.strokeStyle=C.ink;ctx.lineWidth=3;ctx.stroke();text(ctx,String(i+1),x,y+7,20,C.ink,'center',600);});
-    box(ctx,40,75,157,47,'#f0eee8',null,7);text(ctx,'G₁ · low cost',118,106,21,C.ink,'center');
-    box(ctx,650,76,230,47,'#f0eee8',null,7);text(ctx,'G₂ · flexible supply',765,106,21,C.ink,'center');
-    const demand=100+Math.round(25*Math.sin(a));text(ctx,`Demand ${demand} MW`,559,388,23,C.ink,'center',550);
-    text(ctx,'voltage band',207,382,20,C.green,'center');text(ctx,'thermal limit',760,309,20,C.copper,'center');
-    box(ctx,40,414,880,2,C.line,null,0);
-    text(ctx,'ILLUSTRATIVE PROXY-PARAMETER LOSS LANDSCAPE',40,455,20,C.muted,'left',600);
-    const center=[265,625];
-    // Contours of an illustrative normalized mean of per-entry quadratic losses:
-    // ell_k(theta)=.5*(1+a_k dot theta)^2; vectors below are its gradients at theta=0.
-    let hxx=0,hxy=0,hyy=0,bx=0,by=0;
-    for(const i of sel){const len=(95+18*Math.sin(i*1.7))/100,xx=len*Math.cos(gradientAngles[i]),yy=len*Math.sin(gradientAngles[i]);hxx+=xx*xx/sel.size;hxy+=xx*yy/sel.size;hyy+=yy*yy/sel.size;bx+=xx/sel.size;by+=yy/sel.size;}
-    const det=hxx*hyy-hxy*hxy;ctx.save();ctx.beginPath();ctx.rect(70,480,395,285);ctx.clip();
-    if(det>1e-5){const cx=-(hyy*bx-hxy*by)/det,cy=-(hxx*by-hxy*bx)/det,angle=.5*Math.atan2(2*hxy,hxx-hyy),disc=Math.sqrt((hxx-hyy)**2+4*hxy*hxy),l1=(hxx+hyy+disc)/2,l2=(hxx+hyy-disc)/2;
-      const min=.5+.5*(bx*cx+by*cy),here=.5-min;
-      for(const level of [.15,.35,.65,1,1.5,2.2]){const energy=here+level;ctx.beginPath();ctx.ellipse(center[0]+90*cx,center[1]-90*cy,90*Math.sqrt(2*energy/l1),90*Math.sqrt(2*energy/l2),-angle,0,TAU);ctx.strokeStyle='#e9e2ef';ctx.lineWidth=2;ctx.stroke();}
-    }else{const angle=gradientAngles[[...sel][0]],nx=Math.cos(angle),ny=Math.sin(angle);for(let k=-4;k<=4;k++){const d=k*45;line(ctx,[[center[0]+nx*d-300*ny,center[1]-ny*d-300*nx],[center[0]+nx*d+300*ny,center[1]-ny*d+300*nx]],'#e9e2ef',2);}}
-    ctx.restore();line(ctx,[[70,625],[465,625]],'#d6d4d0',2);line(ctx,[[265,478],[265,767]],'#d6d4d0',2);
-    text(ctx,'θ₁',472,634,21,C.muted);text(ctx,'θ₂',278,494,21,C.muted);
-    let sx=0,sy=0;
-    gradientAngles.forEach((ang,i)=>{const len=95+18*Math.sin(i*1.7),dx=len*Math.cos(ang),dy=len*Math.sin(ang),on=sel.has(i);if(on){sx+=dx;sy+=dy;}arrow(ctx,...center,center[0]+dx,center[1]-dy,on?C.purple:'#e2e0dc',on?4:2,on?11:7);});
-    const count=sel.size;const dx=sx/count,dy=sy/count;arrow(ctx,...center,center[0]+dx*1.6,center[1]-dy*1.6,C.ink,6,15);dot(ctx,...center,6,C.ink);
-    text(ctx,`${count} / 12 derivative terms`,535,514,26,C.purple,'left',550);
-    text(ctx,'Each arrow: ∇θ ℓd,k',535,560,23,C.ink);
-    text(ctx,'Selected terms can pull',535,604,22,C.muted);text(ctx,'in opposing directions.',535,635,22,C.muted);
-    line(ctx,[[538,686],[571,686]],C.purple,4);text(ctx,'selected sensitivity loss',585,693,20,C.muted);
-    line(ctx,[[538,725],[571,725]],C.ink,5);text(ctx,'mean selected gradient × 1.6',585,732,18,C.muted);
-    text(ctx,'The mask is uniform; it does not rank constraints or gradients.',40,855,19,C.muted);
-  }
-
-  // Exact KKT solution for a diagonal-covariance six-asset convex toy problem.
-  // max μᵀx subject to x>=0, sum(x)<=1 and sum(d_i*x_i²)<=risk².
-  const variances=[.22**2,.31**2,.18**2,.25**2,.21**2,.28**2];
-  function allocation(mu,risk){
-    const best=mu.indexOf(Math.max(...mu));if(mu[best]<=0)return mu.map(()=>0);
-    if(risk>=Math.sqrt(variances[best]))return mu.map((_,i)=>i===best?1:0);
-    const at=eta=>{const a=mu.map((m,i)=>Math.max(0,m-eta)/variances[i]);const norm=Math.sqrt(a.reduce((s,v,i)=>s+variances[i]*v*v,0));return a.map(v=>norm?risk*v/norm:0);};
-    let x=at(0);if(x.reduce((a,b)=>a+b,0)<=1)return x;
-    let lo=0,hi=mu[best];for(let i=0;i<65;i++){const mid=(lo+hi)/2;if(at(mid).reduce((a,b)=>a+b,0)>1)lo=mid;else hi=mid;}return at((lo+hi)/2);
-  }
-  const returns=(u,v)=>[.025+.13*u,.025+.13*v,.022,-.012,-.035,-.021];
-  const surfaceCache=new Map();
-  function portfolio(ctx,t,opts={}){
-    base(ctx,960,870);const risk=opts.risk??.14,a=TAU*t/16;
-    // Fixed deterministic synthetic fluctuations, not historical or live prices.
-    const u=.72*Math.sin(a)+.10*Math.sin(5*a),v=.68*Math.cos(a+.3)+.12*Math.sin(7*a);
-    const mu=returns(u,v),x=allocation(mu,risk);
-    text(ctx,'SYNTHETIC MARKET INPUTS → OPTIMAL ALLOCATION',40,43,20,C.muted,'left',600);
-    text(ctx,'Expected return μ',40,91,23,C.ink,'left',550);text(ctx,'Allocation x / B',500,91,23,C.ink,'left',550);
-    const colors=[C.purple,C.blue,C.copper,C.green,'#9691a8','#a5aaa1'];
-    // Market trails for A and B share the same values that drive the allocation map.
-    const px=65,py=246,pw=355,ph=115;line(ctx,[[px,py-ph],[px,py+ph]],C.line,2);line(ctx,[[px,py],[px+pw,py]],C.line,2);
-    for(let k=0;k<2;k++){const pts=[];for(let j=0;j<=90;j++){const q=a-(1-j/90)*TAU*.42;const uu=.72*Math.sin(q)+.10*Math.sin(5*q),vv=.68*Math.cos(q+.3)+.12*Math.sin(7*q);pts.push([px+pw*j/90,py-returns(uu,vv)[k]/.16*ph]);}line(ctx,pts,colors[k],3);dot(ctx,...pts.at(-1),5,colors[k]);}
-    text(ctx,'0',52,253,18,C.muted,'right');text(ctx,'A',66,389,21,C.purple,'left',600);text(ctx,'B',117,389,21,C.blue,'left',600);text(ctx,'Fluctuating expected returns',161,389,20,C.muted);
-    x.forEach((value,i)=>{const yy=120+i*43;text(ctx,String.fromCharCode(65+i),500,yy+23,21,colors[i],'left',600);box(ctx,535,yy,287,28,'#f0efeb',null,4);if(value>1e-6)box(ctx,535,yy,287*value,28,colors[i],null,4);text(ctx,`${(value*100).toFixed(0)}%`,844,yy+22,20,value<1e-6?C.muted:C.ink);});
-    text(ctx,`Cash: ${Math.max(0,100*(1-x.reduce((s,v)=>s+v,0))).toFixed(0)}%`,535,410,20,C.muted);
-    // Surface grid values cached by risk for continuous low-cost live rendering.
-    const key=risk.toFixed(3);if(!surfaceCache.has(key)){const n=19,values=new Map();for(let j=0;j<=n;j++)for(let i=0;i<=n;i++){const uu=-1+2*i/n,vv=-1+2*j/n;values.set(`${i},${j}`,allocation(returns(uu,vv),risk)[0]);}surfaceCache.set(key,values);}
-    const values=surfaceCache.get(key),n=19;
-    const fn=(uu,vv)=>{const i=Math.round((uu+1)*n/2),j=Math.round((vv+1)*n/2);return Math.abs((uu+1)*n/2-i)<1e-7 && Math.abs((vv+1)*n/2-j)<1e-7 ? values.get(`${i},${j}`) : allocation(returns(uu,vv),risk)[0];};
-    surface(ctx,fn,{marker:[u,v],title:'Convex program, sparse decision map',xLabel:'Expected return μA',yLabel:'Expected return μB',zLabel:'Optimal allocation xA / B',y:770,height:150});
-    text(ctx,'Flat regions and kinks limit the reach of local sensitivities.',40,855,19,C.muted);
-  }
-
-  const renderers={workflow,control,dispatch,portfolio};
-  const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-  for(const figure of document.querySelectorAll('[data-animation]')){
-    const id=figure.dataset.animation,canvas=figure.querySelector('canvas'),ctx=canvas.getContext('2d');
-    if(!ctx){canvas.hidden=true;continue;}
-    const play=figure.querySelector('[data-action="play"]');
-    const state={id,figure,canvas,ctx,t:id==='control'?2:id==='portfolio'?1.5:0,playing:!reduced.matches,visible:false,last:null,count:3,risk:.14,speed:1};widgets.set(id,state);
-    const speed=document.createElement('select');speed.className='animation-speed';speed.setAttribute('aria-label',`${id} animation speed`);for(const [v,label] of [[.5,'0.5×'],[1,'1× speed'],[1.5,'1.5×']]){const option=document.createElement('option');option.value=v;option.textContent=label;option.selected=v===1;speed.append(option);}speed.addEventListener('change',()=>state.speed=Number(speed.value));play.after(speed);
-    const sync=()=>{play.textContent=state.playing?'Pause':'Play';play.setAttribute('aria-pressed',String(state.playing));};
-    play.addEventListener('click',()=>{state.playing=!state.playing;state.last=null;sync();});
-    figure.querySelector('[data-action="step"]')?.addEventListener('click',()=>{state.playing=false;state.t=(Math.floor(state.t/3.6)+1)*3.6;state.t%=durations[id];sync();draw(state);});
-    sync();draw(state);
-  }
-  function draw(state){renderers[state.id](state.ctx,state.t,{count:state.count,risk:state.risk});}
-  const observer=new IntersectionObserver(entries=>{for(const entry of entries){const state=widgets.get(entry.target.dataset.animation);state.visible=entry.isIntersecting;state.last=null;}},{rootMargin:'50px'});for(const state of widgets.values())observer.observe(state.figure);
-  document.getElementById('dispatch-density')?.addEventListener('input',event=>{const s=widgets.get('dispatch');s.count=Number(event.target.value);document.getElementById('dispatch-count').value=`${s.count} / 12`;draw(s);});
-  document.getElementById('portfolio-risk')?.addEventListener('input',event=>{const s=widgets.get('portfolio');s.risk=Number(event.target.value)/100;document.getElementById('portfolio-risk-label').value=`${event.target.value}%`;draw(s);});
-  reduced.addEventListener('change',event=>{if(event.matches)for(const s of widgets.values()){s.playing=false;s.last=null;const b=s.figure.querySelector('[data-action="play"]');b.textContent='Play';b.setAttribute('aria-pressed','false');}});
-  function tick(now){for(const s of widgets.values()){if(!s.visible||!s.playing||document.hidden){s.last=null;continue;}if(s.last!==null && now-s.last<33)continue;if(s.last!==null){s.t=(s.t+Math.min((now-s.last)/1000,.1)*s.speed)%durations[s.id];}s.last=now;draw(s);}requestAnimationFrame(tick);}requestAnimationFrame(tick);
-  for(const link of document.querySelectorAll('[data-result-link]'))link.addEventListener('click',()=>document.getElementById(`tab-${link.dataset.resultLink}`).click());
-  // Shared frame API for reproducible, local export; no browser automation dependency on the site.
-  window.paperIllustrations={durations,renderFrame(id,t,options={}){const s=widgets.get(id);if(!s)throw new Error(`Unknown illustration: ${id}`);s.playing=false;s.t=t;renderers[id](s.ctx,t,options);return s.canvas.toDataURL('image/png');},allocation};
+  const renderers={workflow,control,dispatch,portfolio},reduced=matchMedia('(prefers-reduced-motion: reduce)');
+  function imageAsset(url){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(new Error(`Image unavailable: ${url}`));img.src=url;});}
+  const ready=Promise.all([
+    imageAsset('assets/method.png').then(img=>assets.method=img),
+    ...['proxy-jacobian','reference-jacobian','loss-main','loss-value','loss-numerator','loss-denominator'].map(name=>imageAsset(`assets/${name}.png`).then(img=>assets[name]=img)),
+    ...['control','dispatch','portfolio'].flatMap(name=>[
+      imageAsset(`assets/${name}-landscape.png`).then(img=>assets[name]=img),
+      fetch(`assets/${name}-toy.json`).then(r=>{if(!r.ok)throw Error(`Toy data: ${name}`);return r.json();}).then(data=>toys[name]=data)
+    ])
+  ]).then(()=>{
+    for(const figure of document.querySelectorAll('[data-animation]')){
+      const id=figure.dataset.animation,canvas=figure.querySelector('canvas'),ctx=canvas.getContext('2d'),button=figure.querySelector('[data-action="play"]');
+      const s={id,figure,canvas,ctx,button,t:0,playing:!reduced.matches,visible:false,last:null};widgets.set(id,s);
+      const sync=()=>{button.textContent=s.playing?'Pause':'Play';button.setAttribute('aria-pressed',String(s.playing));button.setAttribute('aria-label',`${s.playing?'Pause':'Play'} ${id} animation`);};
+      button.addEventListener('click',()=>{s.playing=!s.playing;s.last=null;sync();});sync();draw(s);
+    }
+    const observer=new IntersectionObserver(entries=>{for(const e of entries){const s=widgets.get(e.target.dataset.animation);s.visible=e.isIntersecting;s.last=null;}},{rootMargin:'30px'});for(const s of widgets.values())observer.observe(s.figure);
+    requestAnimationFrame(tick);
+  }).catch(error=>{
+    for(const figure of document.querySelectorAll('[data-animation]')){const id=figure.dataset.animation,name={workflow:'masking-workflow',control:'acrobot-geometry',dispatch:'dispatch-geometry',portfolio:'portfolio-geometry'}[id],img=document.createElement('img');img.src=`assets/${name}.png`;img.alt=figure.querySelector('canvas').getAttribute('aria-label');figure.querySelector('canvas').replaceWith(img);figure.querySelector('[data-action="play"]').hidden=true;}throw error;
+  });
+  function draw(s){renderers[s.id](s.ctx,s.t);}
+  function tick(now){for(const s of widgets.values()){if(!s.playing||!s.visible||document.hidden){s.last=null;continue;}if(s.last!==null&&now-s.last<50)continue;if(s.last!==null)s.t=(s.t+Math.min((now-s.last)/1000,.15))%durations[s.id];s.last=now;draw(s);}requestAnimationFrame(tick);}
+  reduced.addEventListener('change',e=>{if(e.matches)for(const s of widgets.values()){s.playing=false;s.last=null;s.button.textContent='Play';s.button.setAttribute('aria-pressed','false');s.button.setAttribute('aria-label',`Play ${s.id} animation`);}});
+  window.paperIllustrations={ready,durations,pathPoint,renderFrame(id,t){const s=widgets.get(id);if(!s)throw Error(`Unknown illustration ${id}`);s.playing=false;s.t=t;draw(s);return s.canvas.toDataURL('image/png');}};
 })();
