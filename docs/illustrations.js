@@ -97,13 +97,13 @@
   }
 
   const renderers={workflow,control,dispatch,portfolio},reduced=matchMedia('(prefers-reduced-motion: reduce)');
-  function imageAsset(url){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(new Error(`Image unavailable: ${url}`));img.src=url;});}
+  function imageAsset(url){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(new Error(`Image unavailable: ${url}`));img.src=`${url}?v=20261015-r2`;});}
   const ready=Promise.all([
     imageAsset('assets/method.png').then(img=>assets.method=img),
     ...['proxy-jacobian','reference-jacobian','loss-main','loss-value','loss-numerator','loss-denominator'].map(name=>imageAsset(`assets/${name}.png`).then(img=>assets[name]=img)),
     ...['control','dispatch','portfolio'].flatMap(name=>[
       imageAsset(`assets/${name}-landscape.png`).then(img=>assets[name]=img),
-      fetch(`assets/${name}-toy.json`).then(r=>{if(!r.ok)throw Error(`Toy data: ${name}`);return r.json();}).then(data=>toys[name]=data)
+      fetch(`assets/${name}-toy.json?v=20261015-r2`).then(r=>{if(!r.ok)throw Error(`Toy data: ${name}`);return r.json();}).then(data=>toys[name]=data)
     ])
   ]).then(()=>{
     for(const figure of document.querySelectorAll('[data-animation]')){
@@ -115,7 +115,7 @@
     const observer=new IntersectionObserver(entries=>{for(const e of entries){const s=widgets.get(e.target.dataset.animation);s.visible=e.isIntersecting;s.last=null;}},{rootMargin:'30px'});for(const s of widgets.values())observer.observe(s.figure);
     requestAnimationFrame(tick);
   }).catch(error=>{
-    for(const figure of document.querySelectorAll('[data-animation]')){const id=figure.dataset.animation,name={workflow:'masking-workflow',control:'acrobot-geometry',dispatch:'dispatch-geometry',portfolio:'portfolio-geometry'}[id],img=document.createElement('img');img.src=`assets/${name}.png`;img.alt=figure.querySelector('canvas').getAttribute('aria-label');figure.querySelector('canvas').replaceWith(img);figure.querySelector('[data-action="play"]').hidden=true;}throw error;
+    for(const figure of document.querySelectorAll('[data-animation]')){const id=figure.dataset.animation,name={workflow:'masking-workflow',control:'acrobot-geometry',dispatch:'dispatch-geometry',portfolio:'portfolio-geometry'}[id],img=document.createElement('img');img.src=`assets/${name}.png?v=20261015-r2`;img.alt=figure.querySelector('canvas').getAttribute('aria-label');figure.querySelector('canvas').replaceWith(img);figure.querySelector('[data-action="play"]').hidden=true;}throw error;
   });
   function draw(s){renderers[s.id](s.ctx,s.t);}
   function tick(now){for(const s of widgets.values()){if(!s.playing||!s.visible||document.hidden){s.last=null;continue;}if(s.last!==null&&now-s.last<50)continue;if(s.last!==null)s.t=(s.t+Math.min((now-s.last)/1000,.15))%durations[s.id];s.last=now;draw(s);}requestAnimationFrame(tick);}
